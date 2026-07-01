@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PayMe - Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f4f6f9;
+            height: 100vh;
+            overflow: hidden;
+        }
+        /* Sidebar Styling */
+        .sidebar {
+            width: 260px;
+            background-color: #e9ecef;
+            border-right: 1px solid #dee2e6;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 1.5rem 1rem;
+        }
+        .sidebar .nav-link {
+            color: #495057;
+            font-weight: 500;
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            margin-bottom: 0.25rem;
+        }
+        .sidebar .nav-link:hover {
+            background-color: #dee2e6;
+            color: #212529;
+        }
+        .sidebar .nav-link.active {
+            background-color: #ced4da;
+            color: #000000;
+        }
+        /* Main Layout */
+        .dashboard-container {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        /* Top Navigation Bar */
+        .top-navbar {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            padding: 0.75rem 2rem;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 1rem;
+        }
+        /* Metric Summary Cards */
+        .metric-card {
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            text-align: center;
+            padding: 1.25rem;
+        }
+        .metric-title {
+            color: #6c757d;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #212529;
+        }
+        /* Content Panel Layout */
+        .activity-panel {
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1.5rem;
+            flex-grow: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-container">
+
+        <div class="sidebar">
+            <div>
+                <h2 class="fw-bold text-dark px-3 mb-4" style="font-family: sans-serif;">PayMe</h2>
+
+                <nav class="nav flex-column">
+                    <a class="nav-link active" href="#"><i class="bi bi-house-door me-2"></i> Dashboard</a>
+                    <a class="nav-link" href="#"><i class="bi bi-people me-2"></i> Manage Employees</a>
+                    <a class="nav-link" href="#"><i class="bi bi-calculator me-2"></i> Payroll Computation</a>
+                    <a class="nav-link" href="#"><i class="bi bi-file-earmark-text me-2"></i> Payslips</a>
+                    <a class="nav-link" href="#"><i class="bi bi-graph-up me-2"></i> Reports</a>
+                </nav>
+            </div>
+
+            <div>
+                <a href="{% url 'logout' %}" class="btn btn-secondary w-100 fw-semibold text-dark bg-light border-secondary-subtle">Logout</a>
+            </div>
+        </div>
+
+        <div class="main-content">
+
+            <div class="top-navbar">
+                <span class="text-muted small fw-semibold">Quick Access</span>
+                <button class="btn btn-secondary text-dark fw-semibold px-3 btn-sm bg-light border-secondary-subtle">Compute Payroll</button>
+            </div>
+
+            <div class="p-4 d-flex flex-column gap-4 h-100">
+
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <div class="metric-card">
+                            <div class="metric-title">Total Employees:</div>
+                            <div class="metric-value">{{ total_employees|default:"48" }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-card">
+                            <div class="metric-title">Total Payroll This Month:</div>
+                            <div class="metric-value">${{ total_payroll_month|default:"24,500" }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-card">
+                            <div class="metric-title">Pending Payslips:</div>
+                            <div class="metric-value">{{ pending_payslips|default:"5" }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="activity-panel d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold m-0 text-dark">Recent Payroll Activities</h5>
+
+                        <div class="input-group" style="max-width: 220px;">
+                            <input type="text" class="form-control form-control-sm" placeholder="Search Bar">
+                            <span class="input-group-text bg-white border-start-0 text-muted"><i class="bi bi-search" style="font-size: 0.8rem;"></i></span>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered align-middle m-0 text-start">
+                            <thead class="table-light text-secondary">
+                                <tr>
+                                    <th style="width: 20%;">Employee ID</th>
+                                    <th style="width: 35%;">Name</th>
+                                    <th style="width: 25%;">Period</th>
+                                    <th style="width: 20%;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>000004</td>
+                                    <td>Name Ravier</td>
+                                    <td>Aug 11, 2023</td>
+                                    <td><span class="badge bg-secondary-subtle text-dark border">Computed</span></td>
+                                </tr>
+                                <tr>
+                                    <td>000005</td>
+                                    <td>Name Ravier</td>
+                                    <td>Aug 20, 2023</td>
+                                    <td><span class="badge bg-secondary-subtle text-dark border">Completed</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
