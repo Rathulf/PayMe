@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}PayMe - Register{% endblock %}
+
+{% block content %}
+<div class="text-center mb-4">
+    <h3 class="fw-bold text-dark m-0">Create Your Account</h3>
+    <p class="text-muted small">Sign up for your PayMe employee profile</p>
+</div>
+
+<form method="POST" autocomplete="off">
+    {% csrf_token %}
+    
+    {% for field in form %}
+        <div class="mb-2">
+            <label class="form-label small fw-semibold text-secondary">{{ field.label }}</label>
+            {{ field.errors }}
+            <input type="{{ field.field.widget.input_type }}" name="{{ field.html_name }}" class="form-control" autocomplete="new-password" required>
+            {% if field.help_text %}
+                <div class="form-text text-muted" style="font-size: 0.75rem;">{{ field.help_text }}</div>
+            {% endif %}
+        </div>
+    {% endfor %}
+    
+    <hr class="text-muted my-3">
+
+    <div class="mb-2">
+        <label for="employee_id" class="form-label small fw-semibold text-secondary">Employee ID (Optional)</label>
+        <input type="text" name="employee_id" id="employee_id" class="form-control" placeholder="e.g., EMP-00142" autocomplete="off">
+    </div>
+
+    <div class="mb-4">
+        <label for="role" class="form-label small fw-semibold text-secondary">Select Account Profile Type</label>
+        <select name="role" id="role" class="form-select">
+            <option value="employee">Employee / Staff</option>
+            <option value="admin">Administrator (HR / Business Owner)</option>
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">REGISTER</button>
+</form>
+
+<div class="text-center mt-3">
+    <span class="text-muted small">Already have an account? <a href="{% url 'login' %}" class="text-decoration-none fw-semibold">Login</a></span>
+</div>
+{% endblock %}
