@@ -1,0 +1,12 @@
+# PyCharm files
+.idea/
+
+# Python environment
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Local system files
+.DS_Store
+db.sqlite3
