@@ -304,6 +304,14 @@ def payroll_computation(request):
 
 
 @login_required
+def admin_payslips(request):
+    if not is_admin_user(request.user):
+        return redirect('staff_dashboard')
+    payrolls = Payroll.objects.all().select_related('employee__user').order_by('-payroll_id')
+    return render(request, 'payroll/admin_payslips.html', {'payrolls': payrolls})
+
+
+@login_required
 def view_payslip(request, payroll_id):
     try:
         payroll = Payroll.objects.select_related('employee__user', 'payslip').get(pk=payroll_id)
@@ -353,9 +361,14 @@ def staff_dashboard(request):
     }
     return render(request, 'payroll/staff_dashboard.html', context)
 
+@login_required
+def admin_reports(request):
+    """Placeholder view for generating HR and system payroll analytics reports."""
+    if not is_admin_user(request.user):
+        return redirect('staff_dashboard')
+    return render(request, 'payroll/admin_reports.html')
 
 # --- 🚪 LOGOUT SYSTEM DESTRUCTION PIPELINE ---
 def logout_view(request):
-    """Destroys the user session and redirects to the login screen."""
     logout(request)
     return redirect('login')

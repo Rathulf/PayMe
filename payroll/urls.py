@@ -12,7 +12,7 @@ urlpatterns = [
     path('dashboard/admin/computation/', views.payroll_computation, name='payroll_computation'),
     path('dashboard/admin/payslips/', views.admin_payslips, name='admin_payslips'),
     path('dashboard/admin/reports/', views.admin_reports, name='admin_reports'),
-
+    path('dashboard/leaves/', views.leave_manager, name='leave_manager'),
     # Employee Workspace View Routings
     path('dashboard/staff/', views.staff_dashboard, name='staff_dashboard'),
 ]
