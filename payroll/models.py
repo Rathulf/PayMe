@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-
+# 1. EXTENDED USER PROFILE MODEL
 class Profile(models.Model):
     ROLE_CHOICES = [
         ('admin', 'Administrator'),
@@ -22,14 +22,25 @@ class Profile(models.Model):
         return f"{self.user.username} ({self.get_role_display()})"
 
 
+# 2. EXPANDED ADMIN MODEL (With Classifications)
 class AdminProfile(models.Model):
+    CLASSIFICATION_CHOICES = [
+        ('business_owner', 'Business Owner'),
+        ('hr_manager', 'HR Manager'),
+        ('it_admin', 'IT Administrator'),
+    ]
+
     admin_id = models.AutoField(primary_key=True)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='admin_profile')
+    admin_type = models.CharField(max_length=25, choices=CLASSIFICATION_CHOICES, default='hr_manager')
+    managed_department = models.CharField(max_length=100, default='All Departments Scope')
+    office_location = models.CharField(max_length=100, default='Main Headquarters')
 
     def __str__(self):
-        return f"Admin: {self.user.username}"
+        return f"ADM-{self.admin_id:03d}: {self.user.username} ({self.get_admin_type_display()})"
 
 
+# 3. EMPLOYEE MODEL
 class Employee(models.Model):
     employee_id = models.AutoField(primary_key=True)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='employee_profile')
@@ -41,6 +52,8 @@ class Employee(models.Model):
     def __str__(self):
         return f"EMP-{self.employee_id:05d}: {self.user.first_name} {self.user.last_name}"
 
+
+# 4. LEAVE MODEL
 class Leave(models.Model):
     leave_id = models.AutoField(primary_key=True)
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='leaves')
@@ -55,6 +68,8 @@ class Leave(models.Model):
     def __str__(self):
         return f"Leave {self.leave_id} - {self.employee.user.username}"
 
+
+# 5. ATTENDANCE MODEL
 class Attendance(models.Model):
     attendance_id = models.AutoField(primary_key=True)
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='attendances')
@@ -66,6 +81,7 @@ class Attendance(models.Model):
         return f"{self.employee.user.username} - {self.work_date}"
 
 
+# 6. PAYROLL MODEL
 class Payroll(models.Model):
     payroll_id = models.AutoField(primary_key=True)
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='payrolls')
@@ -80,6 +96,7 @@ class Payroll(models.Model):
         return f"Payroll {self.payroll_id} - {self.employee.user.username}"
 
 
+# 7. PAYSLIP MODEL
 class Payslip(models.Model):
     payslip_id = models.AutoField(primary_key=True)
     payroll = models.OneToOneField(Payroll, on_delete=models.CASCADE, related_name='payslip')
@@ -90,21 +107,12 @@ class Payslip(models.Model):
         return f"Slip #{self.payslip_id} for Payroll {self.payroll_id}"
 
 
+# 🌟 AUTOMATED PIPELINE SIGNALS
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
         Profile.objects.create(user=instance)
 
-
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
     instance.profile.save()
-
-    if instance.profile.role == 'admin' and not hasattr(instance, 'admin_profile'):
-        AdminProfile.objects.create(user=instance)
-    elif instance.profile.role == 'employee' and not hasattr(instance, 'employee_profile'):
-        Employee.objects.get_or_create(
-            user=instance,
-            defaults={'department': 'Unassigned', 'position': 'Staff', 'salary': 0.00,
-                      'date_hired': instance.date_joined.date()}
-        )

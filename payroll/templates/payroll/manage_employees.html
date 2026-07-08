@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PayMe - Master Personnel Directory</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .table-title-badge {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 0.4rem 0.75rem;
+            border-radius: 50px;
+        }
+        .card-container {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+            background-color: #fff;
+            padding: 1.75rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container py-5">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="{% url 'admin_dashboard' %}" class="text-decoration-none small d-inline-flex align-items-center gap-1">
+                <i class="bi bi-arrow-left"></i> Back to Dashboard
+            </a>
+            <h2 class="fw-bold text-dark m-0 mt-2">Master Personnel Directory</h2>
+        </div>
+        <span class="badge bg-dark px-3 py-2 shadow-sm">Unified Corporate Directory</span>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show shadow-sm small p-2 mb-4" role="alert">
+                <i class="bi bi-info-circle-fill me-2"></i> {{ message }}
+                <button type="button" class="btn-close p-2" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+
+    <div class="card-container mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <h5 class="fw-bold text-dark m-0 d-flex align-items-center">
+                <i class="bi bi-people-fill text-primary me-2"></i> Regular Employee Workforce
+            </h5>
+            <span class="table-title-badge bg-primary bg-opacity-10 text-primary fw-bold">
+                {{ regular_employees|length }} Registered Staff
+            </span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle m-0">
+                <thead class="table-light text-secondary small text-uppercase">
+                    <tr>
+                        <th>Employee ID</th>
+                        <th>Full Name Identity</th>
+                        <th>Account Assignment</th>
+                        <th>Department</th>
+                        <th>Position</th>
+                        <th>Base Salary</th>
+                        <th>Date Hired</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="small">
+                    {% for emp in regular_employees %}
+                    <tr>
+                        <td class="fw-bold text-secondary">EMP-{{ emp.employee_id|stringformat:"05d" }}</td>
+                        <td>
+                            <span class="fw-semibold text-dark">{{ emp.user.first_name }} {{ emp.user.last_name }}</span>
+                            <br><small class="text-muted">@{{ emp.user.username }}</small>
+                        </td>
+
+                        <form method="POST" action="">
+                            {% csrf_token %}
+                            <input type="hidden" name="user_id" value="{{ emp.user.id }}">
+
+                            <td>
+                                <select name="account_role" class="form-select form-select-sm fw-semibold mb-1" style="max-width: 130px;">
+                                    <option value="employee" selected>Employee</option>
+                                    <option value="admin">Admin Upgrade</option>
+                                </select>
+                                <select name="admin_type" class="form-select form-select-sm text-muted" style="max-width: 130px; font-size: 0.72rem; padding: 0.15rem 0.4rem;">
+                                    <option value="hr_manager">HR Manager</option>
+                                    <option value="business_owner">Business Owner</option>
+                                    <option value="it_admin">IT Admin</option>
+                                </select>
+                            </td>
+                            <td>
+                                <input type="text" name="department" value="{{ emp.department }}" class="form-control form-control-sm" required style="max-width: 130px;">
+                            </td>
+                            <td>
+                                <input type="text" name="position" value="{{ emp.position }}" class="form-control form-control-sm" required style="max-width: 130px;">
+                            </td>
+                            <td>
+                                <div class="input-group input-group-sm" style="max-width: 120px;">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" step="0.01" name="salary" value="{{ emp.salary }}" class="form-control" required>
+                                </div>
+                            </td>
+                            <td>
+                                <input type="date" name="date_hired" value="{{ emp.date_hired|date:'Y-m-d' }}" class="form-control form-control-sm" required style="max-width: 140px;">
+                            </td>
+                            <td class="text-center">
+                                <button type="submit" class="btn btn-sm btn-primary px-3 fw-bold shadow-sm">
+                                    <i class="bi bi-arrow-repeat me-1"></i> Sync
+                                </button>
+                            </td>
+                        </form>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-5">
+                            <i class="bi bi-people fs-2 d-block mb-2 text-opacity-50"></i>
+                            No regular employee entries registered inside the active workforce pool.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+
+    <div class="card-container">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <h5 class="fw-bold text-dark m-0 d-flex align-items-center">
+                <i class="bi bi-shield-lock-fill text-danger me-2"></i> Administrative Management Roster
+            </h5>
+            <span class="table-title-badge bg-danger bg-opacity-10 text-danger fw-bold">
+                {{ admin_personnel|length }} Appointed Management Accounts
+            </span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle m-0">
+                <thead class="table-dark small text-uppercase">
+                    <tr>
+                        <th>Admin ID</th>
+                        <th>User Identity Info</th>
+                        <th>Account Role</th>
+                        <th>Access Classification Level</th>
+                        <th>Assigned Managing Scope</th>
+                        <th>Office Station Base</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="small">
+                    {% for adm in admin_personnel %}
+                    <tr>
+                        <td class="fw-bold text-danger">ADM-{{ adm.admin_id|stringformat:"03d" }}</td>
+                        <td>
+                            <span class="fw-semibold text-dark">{{ adm.user.first_name }} {{ adm.user.last_name }}</span>
+                            <br><small class="text-muted">@{{ adm.user.username }}</small>
+                        </td>
+
+                        <form method="POST" action="">
+                            {% csrf_token %}
+                            <input type="hidden" name="user_id" value="{{ adm.user.id }}">
+
+                            <td>
+                                <select name="account_role" class="form-select form-select-sm fw-semibold text-danger border-danger" style="max-width: 125px;">
+                                    <option value="employee">Employee Demotion</option>
+                                    <option value="admin" selected>Admin</option>
+                                </select>
+                            </td>
+
+                            <td>
+                                {% if adm.admin_type == 'business_owner' %}
+                                    <span class="badge bg-dark text-warning border border-warning px-2 py-1"><i class="bi bi-crown-fill me-1"></i> Business Owner</span>
+                                {% elif adm.admin_type == 'it_admin' %}
+                                    <span class="badge bg-info-subtle text-info border border-info px-2 py-1"><i class="bi bi-cpu-fill me-1"></i> IT Admin</span>
+                                {% else %}
+                                    <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1"><i class="bi bi-person-workspace me-1"></i> HR Manager</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="fw-medium text-secondary">{{ adm.managed_department }}</span>
+                            </td>
+                            <td>
+                                <span class="text-muted">{{ adm.office_location }}</span>
+                            </td>
+
+                            <td class="text-center">
+                                <button type="submit" class="btn btn-sm btn-danger px-3 fw-bold shadow-sm">
+                                    <i class="bi bi-arrow-down-square me-1"></i> Demote
+                                </button>
+                            </td>
+                        </form>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-5">
+                            <i class="bi bi-shield-slash fs-2 d-block mb-2 text-opacity-50"></i>
+                            No standalone administrator management profiles registered in your system yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
