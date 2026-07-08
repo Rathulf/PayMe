@@ -6,10 +6,12 @@ from django.contrib import messages
 from django import forms
 from django.contrib.auth.models import User
 from django.db.models import Sum
+from django.utils import timezone
+from datetime import datetime
 from .models import Profile, Employee, Payroll, Leave, Attendance, Payslip, AdminProfile
 
 
-# CUSTOM REGISTRATION FORM (Public Side)
+# --- FORM DECLARATIONS ---
 class CustomRegisterForm(UserCreationForm):
     first_name = forms.CharField(max_length=30, required=True,
                                  widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'First Name'}))
@@ -27,12 +29,12 @@ class CustomRegisterForm(UserCreationForm):
         return username
 
 
-# ADMINISTRATIVE ACCESS GATEKEEPER
+# --- ACCESS MANAGEMENT HELPERS ---
 def is_admin_user(user):
     return user.is_authenticated and hasattr(user, 'profile') and user.profile.role == 'admin'
 
 
-# PUBLIC REGISTRATION VIEW
+# --- CORE CONTROLLER VIEWS ---
 def register_view(request):
     if request.method == 'POST':
         form = CustomRegisterForm(request.POST)
@@ -56,7 +58,6 @@ def register_view(request):
                     'date_hired': user.date_joined.date()
                 }
             )
-
             messages.success(request, "Registration successful! Pending configuration.")
             return redirect('login')
         else:
@@ -66,7 +67,6 @@ def register_view(request):
     return render(request, 'payroll/register.html', {'form': form})
 
 
-# CENTRAL LOGIN AUTHENTICATION
 def login_view(request):
     if request.method == 'POST':
         form = AuthenticationForm(request, data=request.POST)
@@ -87,7 +87,6 @@ def login_view(request):
     return render(request, 'payroll/login.html', {'form': form})
 
 
-# ADMIN WORKSPACE OVERVIEW
 @login_required
 def admin_dashboard(request):
     if not is_admin_user(request.user):
@@ -113,7 +112,6 @@ def admin_dashboard(request):
     return render(request, 'payroll/admin_dashboard.html', context)
 
 
-# TWIN TABLE WORKFORCE AND ADMIN MANAGER
 @login_required
 def manage_employees(request):
     if not is_admin_user(request.user):
@@ -183,32 +181,32 @@ def manage_employees(request):
     })
 
 
-# REGULAR CORE LAYOUT VIEWS
-@login_required
-def payroll_computation(request):
-    if not is_admin_user(request.user): return redirect('staff_dashboard')
-    return render(request, 'payroll/payroll_computation.html')
-
+# --- 🌟 NEW OPERATIONAL SYSTEM COMPONENT VIEWS 🌟 ---
 
 @login_required
-def admin_payslips(request):
-    if not is_admin_user(request.user): return redirect('staff_dashboard')
-    payslips = Payslip.objects.all()
-    return render(request, 'payroll/admin_payslips.html', {'payslips': payslips})
+def attendance_tracker(request):
+    """Logs daily operations tracking arrays matching the ATTENDANCE entity."""
+    if not is_admin_user(request.user):
+        return redirect('staff_dashboard')
 
+    if request.method == 'POST':
+        emp_id = request.POST.get('employee_id')
+        work_date = request.POST.get('work_date')
+        hours_worked = request.POST.get('hours_worked', 8.0)
+        status = request.POST.get('attendance_status', 'Present')
 
-@login_required
-def admin_reports(request):
-    if not is_admin_user(request.user): return redirect('staff_dashboard')
-    return render(request, 'payroll/admin_reports.html')
+        try:
+            employee = Employee.objects.get(pk=emp_id)
+            Attendance.objects.create(
+                employee=employee,
+                work_date=work_date,
+                hours_worked=hours_worked,
+                attendance_status=status
+            )
+            messages.success(request, f"Attendance log committed for {employee.user.get_full_name()}.")
+        except Employee.DoesNotExist:
+            messages.error(request, "Employee row profile entry not found.")
+        return redirect('attendance_tracker')
 
-
-@login_required
-def staff_dashboard(request):
-    if is_admin_user(request.user): return redirect('admin_dashboard')
-    return render(request, 'payroll/staff_dashboard.html')
-
-
-def logout_view(request):
-    logout(request)
-    return redirect('login')
+    employees = Employee.objects.all().select_related('user')
+    attendance_records = Attendance.objects.all().select_related('employee__user').order_by('-work_date')[:15]
