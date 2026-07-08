@@ -8,180 +8,186 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body {
-            background-color: #f4f6f9;
-            height: 100vh;
-            overflow: hidden;
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        /* Sidebar Styling */
         .sidebar {
-            width: 260px;
-            background-color: #e9ecef;
-            border-right: 1px solid #dee2e6;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 1.5rem 1rem;
+            min-height: 100vh;
+            background-color: #212529;
+            color: #fff;
         }
         .sidebar .nav-link {
-            color: #495057;
-            font-weight: 500;
-            padding: 0.6rem 1rem;
-            border-radius: 6px;
-            margin-bottom: 0.25rem;
+            color: #rgba(255,255,255,0.75);
+            transition: all 0.2s;
         }
-        .sidebar .nav-link:hover {
-            background-color: #dee2e6;
-            color: #212529;
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            color: #fff;
+            background-color: #343a40;
+            border-radius: 4px;
         }
-        .sidebar .nav-link.active {
-            background-color: #ced4da;
-            color: #000000;
+        .card-counter {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
         }
-        /* Main Layout */
-        .dashboard-container {
-            display: flex;
-            height: 100vh;
-            width: 100vw;
+        .card-counter:hover {
+            transform: translateY(-3px);
         }
-        .main-content {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-        }
-        /* Top Navigation Bar */
-        .top-navbar {
-            background-color: #f8f9fa;
-            border-bottom: 1px solid #dee2e6;
-            padding: 0.75rem 2rem;
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            gap: 1rem;
-        }
-        /* Metric Summary Cards */
-        .metric-card {
-            background: #ffffff;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            text-align: center;
-            padding: 1.25rem;
-        }
-        .metric-title {
-            color: #6c757d;
-            font-size: 0.9rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-        .metric-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #212529;
-        }
-        /* Content Panel Layout */
-        .activity-panel {
-            background: #ffffff;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
+        .table-container {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
             padding: 1.5rem;
-            flex-grow: 1;
         }
     </style>
 </head>
 <body>
 
-    <div class="dashboard-container">
+<div class="container-fluid">
+    <div class="row">
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse p-3">
+            <div class="position-sticky">
+                <h3 class="fw-bold text-center py-3 border-bottom border-secondary">PayMe</h3>
+                <ul class="nav flex-column mt-4 gap-2">
+                    <li class="nav-item">
+                        <a class="nav-link active py-2 px-3 d-flex align-items-center" href="{% url 'admin_dashboard' %}">
+                            <i class="bi bi-speedometer2 me-2"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link py-2 px-3 d-flex align-items-center" href="{% url 'manage_employees' %}">
+                            <i class="bi bi-people me-2"></i> Manage Employees
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link py-2 px-3 d-flex align-items-center" href="{% url 'payroll_computation' %}">
+                            <i class="bi bi-calculator me-2"></i> Payroll Computation
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link py-2 px-3 d-flex align-items-center" href="{% url 'admin_payslips' %}">
+                            <i class="bi bi-file-earmark-text me-2"></i> Payslips
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link py-2 px-3 d-flex align-items-center" href="{% url 'admin_reports' %}">
+                            <i class="bi bi-graph-up me-2"></i> Reports
+                        </a>
+                    </li>
+                </ul>
+                <div class="mt-5 pt-5 border-top border-secondary">
+                    <a href="{% url 'logout' %}" class="btn btn-danger w-100 d-flex align-items-center justify-content-center">
+                        <i class="bi bi-box-arrow-left me-2"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </nav>
 
-        <div class="sidebar">
-            <div>
-                <h2 class="fw-bold text-dark px-3 mb-4" style="font-family: sans-serif;">PayMe</h2>
-
-                <nav class="nav flex-column">
-                    <a class="nav-link active" href="{% url 'admin_dashboard' %}"><i class="bi bi-house-door me-2"></i> Dashboard</a>
-                    <a class="nav-link" href="{% url 'manage_employees' %}"><i class="bi bi-people me-2"></i> Manage Employees</a>
-                    <a class="nav-link" href="{% url 'payroll_computation' %}"><i class="bi bi-calculator me-2"></i> Payroll Computation</a>
-                    <a class="nav-link" href="{% url 'admin_payslips' %}"><i class="bi bi-file-earmark-text me-2"></i> Payslips</a>
-                    <a class="nav-link" href="{% url 'admin_reports' %}"><i class="bi bi-graph-up me-2"></i> Reports</a>
-                </nav>
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2 fw-bold text-secondary">Website Dashboard (Admin View)</h1>
+                <div class="btn-toolbar mb-2 mb-md-0 gap-2">
+                    <span class="align-self-center text-muted me-2">Quick Access:</span>
+                    <a href="{% url 'payroll_computation' %}" class="btn btn-sm btn-primary px-3 fw-semibold">
+                        <i class="bi bi-plus-circle me-1"></i> Compute Payroll
+                    </a>
+                </div>
             </div>
 
-            <div>
-                <a href="{% url 'logout' %}" class="btn btn-secondary w-100 fw-semibold text-dark bg-light border-secondary-subtle">Logout</a>
-            </div>
-        </div>
-
-        <div class="main-content">
-
-            <div class="top-navbar">
-                <span class="text-muted small fw-semibold">Quick Access</span>
-                <button class="btn btn-secondary text-dark fw-semibold px-3 btn-sm bg-light border-secondary-subtle">Compute Payroll</button>
-            </div>
-
-            <div class="p-4 d-flex flex-column gap-4 h-100">
-
-                <div class="row g-4">
-                    <div class="col-md-4">
-                        <div class="metric-card">
-                            <div class="metric-title">Total Employees:</div>
-                            <div class="metric-value">{{ total_employees|default:"48" }}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="metric-card">
-                            <div class="metric-title">Total Payroll This Month:</div>
-                            <div class="metric-value">${{ total_payroll_month|default:"24,500" }}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="metric-card">
-                            <div class="metric-title">Pending Payslips:</div>
-                            <div class="metric-value">{{ pending_payslips|default:"5" }}</div>
+            <div class="row g-4 mb-4">
+                <div class="col-12 col-sm-6 col-xl-4">
+                    <div class="card card-counter p-4 bg-white border-start border-primary border-4">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <p class="text-muted text-uppercase small fw-bold mb-1">Total Employees</p>
+                                <h2 class="fw-bold m-0">{{ total_employees|default:"0" }}</h2>
+                            </div>
+                            <div class="bg-primary bg-opacity-10 p-3 rounded-circle text-primary">
+                                <i class="bi bi-people-fill fs-3"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="activity-panel d-flex flex-column">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="fw-bold m-0 text-dark">Recent Payroll Activities</h5>
-
-                        <div class="input-group" style="max-width: 220px;">
-                            <input type="text" class="form-control form-control-sm" placeholder="Search Bar">
-                            <span class="input-group-text bg-white border-start-0 text-muted"><i class="bi bi-search" style="font-size: 0.8rem;"></i></span>
+                <div class="col-12 col-sm-6 col-xl-4">
+                    <div class="card card-counter p-4 bg-white border-start border-success border-4">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <p class="text-muted text-uppercase small fw-bold mb-1">Total Payroll This Month</p>
+                                <h2 class="fw-bold m-0">${{ total_payroll_month|default:"0.00" }}</h2>
+                            </div>
+                            <div class="bg-success bg-opacity-10 p-3 rounded-circle text-success">
+                                <i class="bi bi-currency-dollar fs-3"></i>
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="table-responsive">
-                        <table class="table table-bordered align-middle m-0 text-start">
-                            <thead class="table-light text-secondary">
-                                <tr>
-                                    <th style="width: 20%;">Employee ID</th>
-                                    <th style="width: 35%;">Name</th>
-                                    <th style="width: 25%;">Period</th>
-                                    <th style="width: 20%;">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>000004</td>
-                                    <td>Name Ravier</td>
-                                    <td>Aug 11, 2023</td>
-                                    <td><span class="badge bg-secondary-subtle text-dark border">Computed</span></td>
-                                </tr>
-                                <tr>
-                                    <td>000005</td>
-                                    <td>Name Ravier</td>
-                                    <td>Aug 20, 2023</td>
-                                    <td><span class="badge bg-secondary-subtle text-dark border">Completed</span></td>
-                                </tr>
-                            </tbody>
-                        </table>
                     </div>
                 </div>
 
+                <div class="col-12 col-sm-6 col-xl-4">
+                    <div class="card card-counter p-4 bg-white border-start border-warning border-4">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <p class="text-muted text-uppercase small fw-bold mb-1">Pending Payslips</p>
+                                <h2 class="fw-bold m-0">{{ pending_payslips|default:"0" }}</h2>
+                            </div>
+                            <div class="bg-warning bg-opacity-10 p-3 rounded-circle text-warning">
+                                <i class="bi bi-hourglass-split fs-3"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
+
+            <div class="table-container">
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                    <h5 class="fw-bold text-dark m-0">Recent Payroll Activities</h5>
+                    <div class="search-box position-relative">
+                        <input type="text" class="form-control form-control-sm ps-4" placeholder="Search Activity...">
+                        <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-2 text-muted small"></i>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle m-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Employee ID</th>
+                                <th>Name</th>
+                                <th>Period</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for activity in recent_activities %}
+                            <tr>
+                                <td class="fw-semibold">EMP-{{ activity.employee.employee_id|stringformat:"05d" }}</td>
+                                <td>{{ activity.employee.user.first_name }} {{ activity.employee.user.last_name }}</td>
+                                <td>{{ activity.payroll_period_start }} - {{ activity.payroll_period_end }}</td>
+                                <td>
+                                    {% if activity.payroll_status == 'Completed' %}
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Completed</span>
+                                    {% else %}
+                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1">{{ activity.payroll_status }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">
+                                    <i class="bi bi-folder-x fs-2 d-block mb-2"></i>
+                                    No recent payroll actions found.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
     </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
