@@ -97,11 +97,11 @@
                 <h2 class="fw-bold text-dark px-3 mb-4" style="font-family: sans-serif;">PayMe</h2>
 
                 <nav class="nav flex-column">
-                    <a class="nav-link active" href="#"><i class="bi bi-house-door me-2"></i> Dashboard</a>
-                    <a class="nav-link" href="#"><i class="bi bi-people me-2"></i> Manage Employees</a>
-                    <a class="nav-link" href="#"><i class="bi bi-calculator me-2"></i> Payroll Computation</a>
-                    <a class="nav-link" href="#"><i class="bi bi-file-earmark-text me-2"></i> Payslips</a>
-                    <a class="nav-link" href="#"><i class="bi bi-graph-up me-2"></i> Reports</a>
+                    <a class="nav-link active" href="{% url 'admin_dashboard' %}"><i class="bi bi-house-door me-2"></i> Dashboard</a>
+                    <a class="nav-link" href="{% url 'manage_employees' %}"><i class="bi bi-people me-2"></i> Manage Employees</a>
+                    <a class="nav-link" href="{% url 'payroll_computation' %}"><i class="bi bi-calculator me-2"></i> Payroll Computation</a>
+                    <a class="nav-link" href="{% url 'admin_payslips' %}"><i class="bi bi-file-earmark-text me-2"></i> Payslips</a>
+                    <a class="nav-link" href="{% url 'admin_reports' %}"><i class="bi bi-graph-up me-2"></i> Reports</a>
                 </nav>
             </div>
 
