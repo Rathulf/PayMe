@@ -2,9 +2,92 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>PayMe - Leave Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
 </head>
-<body>
+<body class="bg-light">
+<div class="container py-5" style="max-width: 1000px;">
 
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="{% url 'admin_dashboard' %}" class="text-decoration-none small"><i class="bi bi-arrow-left"></i> Return Home</a>
+            <h2 class="fw-bold text-dark m-0 mt-1">Absence & Leave Management Ledger</h2>
+        </div>
+    </div>
+
+    {% if request.user.profile.role == 'employee' %}
+    <div class="card border-0 shadow-sm rounded-3 p-4 mb-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-pencil-square me-2"></i>File New Absence Notice Request</h5>
+        <form method="POST">
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">Leave Classification</label>
+                    <input type="text" name="leave_type" class="form-control form-control-sm" placeholder="e.g., Vacation, Sick" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">Start Date</label>
+                    <input type="date" name="start_date" class="form-control form-control-sm" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">End Date</label>
+                    <input type="date" name="end_date" class="form-control form-control-sm" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">Reason Statement Description</label>
+                    <input type="text" name="reason" class="form-control form-control-sm" placeholder="Medical checkup" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-sm btn-primary px-4 fw-bold mt-3">Upload Filing</button>
+        </form>
+    </div>
+    {% endif %}
+
+    <div class="card border-0 shadow-sm rounded-3 p-4">
+        <h5 class="fw-bold mb-3">Absence Notice Directory Manifest</h5>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle m-0">
+                <thead class="table-light text-secondary small text-uppercase">
+                    <tr>
+                        <th>Filing Staff</th>
+                        <th>Filing Class</th>
+                        <th>Duration Span</th>
+                        <th>Stated Reason</th>
+                        <th>Status Control Approval Action</th>
+                    </tr>
+                </thead>
+                <tbody class="small">
+                    {% for lv in leaves %}
+                    <tr>
+                        <td class="fw-semibold">{{ lv.employee.user.get_full_name }}</td>
+                        <td><span class="badge bg-secondary-subtle text-dark border">{{ lv.leave_type }}</span></td>
+                        <td>{{ lv.start_date }} to {{ lv.end_date }} <small class="text-muted">({{ lv.total_days }} Days)</small></td>
+                        <td>{{ lv.reason }}</td>
+                        <td>
+                            {% if request.user.profile.role == 'admin' and lv.status == 'Pending' %}
+                            <form method="POST" class="d-inline-flex gap-1">
+                                {% csrf_token %}
+                                <input type="hidden" name="leave_id" value="{{ lv.leave_id }}">
+                                <input type="hidden" name="update_status" value="1">
+                                <button name="status" value="Approved" class="btn btn-xs btn-success py-0 px-2 small fw-bold">Approve</button>
+                                <button name="status" value="Rejected" class="btn btn-xs btn-danger py-0 px-2 small fw-bold">Reject</button>
+                            </form>
+                            {% else %}
+                                <span class="badge {% if lv.status == 'Approved' %}bg-success{% elif lv.status == 'Rejected' %}bg-danger{% else %}bg-warning text-dark{% endif %} px-2 py-1">
+                                    {{ lv.status }}
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center text-muted py-3">No active leave history items found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
 </body>
 </html>
