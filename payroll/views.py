@@ -11,7 +11,7 @@ from datetime import datetime
 from .models import Profile, Employee, Payroll, Leave, Attendance, Payslip, AdminProfile
 
 
-# --- FORM DECLARATIONS ---
+# --- 📋 REGISTRATION FORM DEFINITION ---
 class CustomRegisterForm(UserCreationForm):
     first_name = forms.CharField(max_length=30, required=True,
                                  widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'First Name'}))
@@ -29,12 +29,12 @@ class CustomRegisterForm(UserCreationForm):
         return username
 
 
-# --- ACCESS MANAGEMENT HELPERS ---
+# --- 🛡️ ACCESS GATEKEEPER PERMISSIONS ---
 def is_admin_user(user):
     return user.is_authenticated and hasattr(user, 'profile') and user.profile.role == 'admin'
 
 
-# --- CORE CONTROLLER VIEWS ---
+# --- 🔑 AUTHENTICATION AND SIGNUP VIEWS ---
 def register_view(request):
     if request.method == 'POST':
         form = CustomRegisterForm(request.POST)
@@ -58,10 +58,11 @@ def register_view(request):
                     'date_hired': user.date_joined.date()
                 }
             )
-            messages.success(request, "Registration successful! Pending configuration.")
+
+            messages.success(request, "Registration successful! Your account is pending administrator configuration.")
             return redirect('login')
         else:
-            messages.error(request, "Registration failed. Correct validation errors.")
+            messages.error(request, "Registration failed. Please correct the form validation errors.")
     else:
         form = CustomRegisterForm()
     return render(request, 'payroll/register.html', {'form': form})
@@ -87,12 +88,15 @@ def login_view(request):
     return render(request, 'payroll/login.html', {'form': form})
 
 
+# --- 📊 ADMINISTRATIVE HUB PANELS ---
 @login_required
 def admin_dashboard(request):
     if not is_admin_user(request.user):
         return redirect('staff_dashboard')
 
     total_employees_count = Employee.objects.count()
+    today_date = timezone.now().date()
+    today_present_count = Attendance.objects.filter(work_date=today_date, attendance_status='Present').count()
 
     if total_employees_count > 0:
         total_payroll_calc = Payroll.objects.aggregate(total_sum=Sum('net_salary'))['total_sum'] or 0.00
@@ -105,6 +109,7 @@ def admin_dashboard(request):
 
     context = {
         'total_employees': total_employees_count,
+        'today_present': today_present_count,
         'total_payroll_month': f"{total_payroll_calc:,.2f}",
         'pending_payslips': pending_payslips_count,
         'recent_activities': recent_activities_list,
@@ -181,11 +186,9 @@ def manage_employees(request):
     })
 
 
-# --- 🌟 NEW OPERATIONAL SYSTEM COMPONENT VIEWS 🌟 ---
-
+# --- 🕒 SYSTEM OPERATION MODULES ---
 @login_required
 def attendance_tracker(request):
-    """Logs daily operations tracking arrays matching the ATTENDANCE entity."""
     if not is_admin_user(request.user):
         return redirect('staff_dashboard')
 
@@ -210,3 +213,149 @@ def attendance_tracker(request):
 
     employees = Employee.objects.all().select_related('user')
     attendance_records = Attendance.objects.all().select_related('employee__user').order_by('-work_date')[:15]
+    return render(request, 'payroll/attendance_tracker.html', {
+        'employees': employees,
+        'attendance_records': attendance_records
+    })
+
+
+@login_required
+def leave_manager(request):
+    if request.method == 'POST':
+        if is_admin_user(request.user) and 'update_status' in request.POST:
+            leave_id = request.POST.get('leave_id')
+            new_status = request.POST.get('status')
+            Leave.objects.filter(pk=leave_id).update(status=new_status)
+            messages.success(request, "Leave state modified successfully.")
+            return redirect('leave_manager')
+
+        elif request.user.profile.role == 'employee':
+            try:
+                employee = request.user.employee_profile
+                start_date = datetime.strptime(request.POST.get('start_date'), '%Y-%m-%d').date()
+                end_date = datetime.strptime(request.POST.get('end_date'), '%Y-%m-%d').date()
+                total_days = (end_date - start_date).days + 1
+
+                Leave.objects.create(
+                    employee=employee,
+                    leave_type=request.POST.get('leave_type'),
+                    start_date=start_date,
+                    end_date=end_date,
+                    total_days=total_days,
+                    reason=request.POST.get('reason'),
+                    status='Pending'
+                )
+                messages.success(request, "Leave submission uploaded successfully.")
+            except Exception:
+                messages.error(request, "Failed to compute timelines. Verify parameters.")
+            return redirect('leave_manager')
+
+    if is_admin_user(request.user):
+        leaves = Leave.objects.all().select_related('employee__user').order_by('-date_requested')
+    else:
+        leaves = Leave.objects.filter(employee=request.user.employee_profile).order_by('-date_requested')
+
+    return render(request, 'payroll/leave_manager.html', {'leaves': leaves})
+
+
+@login_required
+def payroll_computation(request):
+    if not is_admin_user(request.user):
+        return redirect('staff_dashboard')
+
+    if request.method == 'POST':
+        emp_id = request.POST.get('employee_id')
+        start_date = request.POST.get('period_start')
+        end_date = request.POST.get('period_end')
+
+        try:
+            employee = Employee.objects.get(pk=emp_id)
+            gross = float(employee.salary)
+            deductions = gross * 0.12
+            net = gross - deductions
+
+            payroll = Payroll.objects.create(
+                employee=employee,
+                payroll_period_start=start_date,
+                payroll_period_end=end_date,
+                gross_salary=gross,
+                deductions=deductions,
+                net_salary=net,
+                payroll_status='Completed'
+            )
+
+            Payslip.objects.create(
+                payroll=payroll,
+                issue_date=timezone.now().date(),
+                remarks=f"Automated system run processing cycle executed on {timezone.now().date()}."
+            )
+            messages.success(request,
+                             f"Payroll accounting ledger structured successfully for {employee.user.get_full_name()}!")
+        except Exception as e:
+            messages.error(request, f"Transactional computation fault: {str(e)}")
+        return redirect('payroll_computation')
+
+    employees = Employee.objects.all().select_related('user')
+    payrolls = Payroll.objects.all().select_related('employee__user').order_by('-payroll_id')
+    return render(request, 'payroll/payroll_computation.html', {
+        'employees': employees,
+        'payrolls': payrolls
+    })
+
+
+@login_required
+def view_payslip(request, payroll_id):
+    try:
+        payroll = Payroll.objects.select_related('employee__user', 'payslip').get(pk=payroll_id)
+        if request.user.profile.role == 'employee' and payroll.employee != request.user.employee_profile:
+            return redirect('staff_dashboard')
+        return render(request, 'payroll/view_payslip.html', {'payroll': payroll})
+    except Payroll.DoesNotExist:
+        messages.error(request, "Target invoice reference index could not be located.")
+        return redirect('admin_dashboard' if request.user.profile.role == 'admin' else 'staff_dashboard')
+
+
+# --- 👥 EMPLOYEE END-USER PANEL WORKSPACE ---
+@login_required
+def staff_dashboard(request):
+    if is_admin_user(request.user):
+        return redirect('admin_dashboard')
+
+    try:
+        employee = request.user.employee_profile
+    except Employee.DoesNotExist:
+        messages.error(request, "Employee profile record missing.")
+        return redirect('logout')
+
+    if request.method == 'POST' and 'clock_in' in request.POST:
+        work_date = request.POST.get('work_date')
+        hours_worked = request.POST.get('hours_worked', 8.0)
+
+        already_logged = Attendance.objects.filter(employee=employee, work_date=work_date).exists()
+        if already_logged:
+            messages.warning(request, f"You have already submitted an attendance log for {work_date}.")
+        else:
+            Attendance.objects.create(
+                employee=employee,
+                work_date=work_date,
+                hours_worked=hours_worked,
+                attendance_status='Present'
+            )
+            messages.success(request, f"Attendance for {work_date} successfully logged!")
+        return redirect('staff_dashboard')
+
+    my_payrolls = Payroll.objects.filter(employee=employee).order_by('-payroll_id')
+    my_attendance = Attendance.objects.filter(employee=employee).order_by('-work_date')[:10]
+
+    context = {
+        'my_payrolls': my_payrolls,
+        'my_attendance': my_attendance,
+    }
+    return render(request, 'payroll/staff_dashboard.html', context)
+
+
+# --- 🚪 LOGOUT SYSTEM DESTRUCTION PIPELINE ---
+def logout_view(request):
+    """Destroys the user session and redirects to the login screen."""
+    logout(request)
+    return redirect('login')
