@@ -1,57 +1,87 @@
+<!-- 📂 Location: templates/payroll/view_payslip.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Payslip Statement Receipt Reference #{{ payroll.payroll_id }}</title>
+    <title>PayMe Remittance - Statement Voucher</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        body { background-color: #f1f3f5; font-family: monospace; }
-        .receipt-card { max-width: 650px; background-color: #fff; padding: 2.5rem; border: 2px dashed #000; margin: 3rem auto; }
-        @media print { .no-print { display: none !important; } body { background-color: #fff; } .receipt-card { border: none; margin: 0; padding: 0; } }
+        @media print {
+            .no-print { display: none !important; }
+            .card { border: none !important; box-shadow: none !important; }
+        }
     </style>
 </head>
-<body>
+<body class="bg-light">
+<div class="container py-5" style="max-width: 800px;">
 
-<div class="receipt-card shadow-sm">
-    <div class="text-center mb-4">
-        <h3 class="fw-bold m-0 tracking-wider">PAYME CORPORATE PAYROLL RECIPIENT INVOICE</h3>
-        <p class="text-muted small m-0">Official Remittance Verification Document Statement</p>
+    <div class="no-print d-flex justify-content-between align-items-center mb-4">
+        <a href="{% if request.user.profile.role == 'admin' %}{% url 'payroll_computation' %}{% else %}{% url 'staff_dashboard' %}{% endif %}" class="text-decoration-none small">
+            <i class="bi bi-arrow-left"></i> Back to Logs
+        </a>
+        <button onclick="window.print()" class="btn btn-dark btn-sm fw-bold shadow-sm"><i class="bi bi-printer me-1"></i> Print Statement</button>
     </div>
 
-    <div class="row small mb-4 mt-2 border-top border-bottom py-2 bg-light">
-        <div class="col-6">
-            <strong>Disbursed To:</strong> {{ payroll.employee.user.get_full_name }}<br>
-            <strong>Position Class:</strong> {{ payroll.employee.position }}<br>
-            <strong>Department Scope:</strong> {{ payroll.employee.department }}
+    <div class="card border-0 shadow-sm p-5 bg-white rounded-3">
+        <div class="d-flex justify-content-between align-items-start border-bottom pb-3 mb-4">
+            <div>
+                <h3 class="fw-bold text-dark uppercase m-0">PAYME LABERS CO.</h3>
+                <small class="text-muted text-uppercase tracking-wider" style="font-size: 0.68rem;">Official Remittance E-Receipt</small>
+            </div>
+            <div class="text-end">
+                <span class="badge bg-dark px-3 py-1 fw-bold">REF-ID: PAY-{{ payroll.payroll_id }}</span>
+                <small class="d-block text-muted mt-1" style="font-size: 0.78rem;">Issued: {{ payroll.payslip.issue_date }}</small>
+            </div>
         </div>
-        <div class="col-6 text-end">
-            <strong>Receipt Run Index:</strong> #PS-{{ payroll.payslip.payslip_id|stringformat:"04d" }}<br>
-            <strong>Accounting Span:</strong> {{ payroll.payroll_period_start }} to {{ payroll.payroll_period_end }}<br>
-            <strong>Issue Timestamp:</strong> {{ payroll.payslip.issue_date }}
+
+        <div class="row g-3 mb-4 small">
+            <div class="col-6">
+                <span class="text-uppercase text-secondary fw-bold d-block" style="font-size: 0.68rem;">Employee Roster Identity</span>
+                <strong class="text-dark fs-6">{{ payroll.employee.user.get_full_name }}</strong>
+                <span class="d-block text-muted">Position: {{ payroll.employee.position }}</span>
+                <span class="d-block text-muted">Department: {{ payroll.employee.department }}</span>
+            </div>
+            <div class="col-6 text-end">
+                <span class="text-uppercase text-secondary fw-bold d-block" style="font-size: 0.68rem;">Filing Target Period</span>
+                <strong class="text-dark">{{ payroll.payroll_period_start }}</strong>
+                <span class="text-muted d-block">through</span>
+                <strong class="text-dark">{{ payroll.payroll_period_end }}</strong>
+            </div>
+        </div>
+
+        <div class="table-responsive mb-4">
+            <table class="table table-bordered align-middle text-center small m-0">
+                <thead>
+                    <tr class="table-light text-uppercase" style="font-size: 0.72rem;">
+                        <th>Payment Description</th>
+                        <th class="text-end" style="width: 35%;">Remitted Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="text-start fw-semibold">Gross Earned Base Compensation</td>
+                        <!-- 🌟 HARDCODED PESO SYMBOLS IN BREAKDOWN -->
+                        <td class="text-end fw-bold">₱{{ payroll.gross_salary|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-start text-danger">Statutory Deductions & Withholding Taxes (12%)</td>
+                        <td class="text-end text-danger fw-bold">-₱{{ payroll.deductions|floatformat:2 }}</td>
+                    </tr>
+                    <tr class="table-success align-middle" style="font-size: 1.05rem;">
+                        <td class="text-start fw-bold text-success">Disbursed Take-Home Pay</td>
+                        <td class="text-end fw-extrabold text-success">₱{{ payroll.net_salary|floatformat:2 }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="bg-light p-3 rounded border small text-muted">
+            <span class="text-uppercase text-secondary fw-bold d-block mb-1" style="font-size: 0.65rem;"><i class="bi bi-info-circle me-1"></i> System Calculation Logs</span>
+            <span class="italic">{{ clean_remarks }}</span>
         </div>
     </div>
 
-    <h6 class="fw-bold text-dark text-uppercase small mb-2">Accounting Itemization Summary</h6>
-    <table class="table table-sm table-bordered align-middle">
-        <thead class="table-light small text-uppercase">
-            <tr><th>Metric Component Description</th><th class="text-end">Value Allocation Amount</th></tr>
-        </thead>
-        <tbody class="small">
-            <tr><td>Base Regular Contractual Gross Salary Rate Amount</td><td class="text-end">${{ payroll.gross_salary }}</td></tr>
-            <tr class="text-danger"><td>Withholding Deductions Assessment Tax Bracket (12%)</td><td class="text-end">-${{ payroll.deductions }}</td></tr>
-            <tr class="table-dark fw-bold text-uppercase"><td>Final Disbursed Net Remittance Bank Payload Allocation</td><td class="text-end text-success">${{ payroll.net_salary }}</td></tr>
-        </tbody>
-    </table>
-
-    <div class="mt-4 p-2 bg-light text-muted border-start border-3 small" style="font-size: 0.72rem; line-height: 1.2;">
-        <strong>System Remarks:</strong> {{ payroll.payslip.remarks }}
-    </div>
-
-    <div class="text-center mt-5 no-print">
-        <button onclick="window.print()" class="btn btn-dark btn-sm px-4 fw-bold shadow"><i class="bi bi-printer me-2"></i>Print Invoice Document</button>
-    </div>
 </div>
-
 </body>
 </html>

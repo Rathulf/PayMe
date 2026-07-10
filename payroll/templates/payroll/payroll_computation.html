@@ -1,85 +1,117 @@
+<!-- 📂 Location: templates/payroll/payroll_computation.html -->
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>PayMe - Compute Payroll</title>
+    <title>PayMe Central - Run Payroll</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="{% static 'css/payroll.css' %}" rel="stylesheet">
 </head>
-<body class="bg-light">
-<div class="container py-5" style="max-width: 1100px;">
+<body class="d-flex">
 
-    <div class="mb-4">
-        <a href="{% url 'admin_dashboard' %}" class="text-decoration-none small"><i class="bi bi-arrow-left"></i> Dashboard Control Hub</a>
-        <h2 class="fw-bold text-dark m-0 mt-1">Run Monthly Payroll Computation Accounting</h2>
-    </div>
-
-    <div class="card border-0 shadow-sm rounded-3 p-4 mb-4">
-        <h5 class="fw-bold mb-3"><i class="bi bi-calculator-fill me-2"></i>Run Payroll Remittance Formula Matrix Engine</h5>
-        <form method="POST">
-            {% csrf_token %}
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label small fw-bold text-muted">Select Target Worker Row</label>
-                    <select name="employee_id" class="form-select form-select-sm" required>
-                        {% for emp in employees %}
-                            <option value="{{ emp.employee_id }}">{{ emp.user.get_full_name }} (Baseline Base Salary: ${{ emp.salary }})</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label small fw-bold text-muted">Period Start Cycle</label>
-                    <input type="date" name="period_start" class="form-control form-control-sm" required>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label small fw-bold text-muted">Period End Cycle</label>
-                    <input type="date" name="period_end" class="form-control form-control-sm" required>
-                </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-sm btn-success w-100 fw-bold">Compute & Issue</button>
-                </div>
+    <div class="sidebar d-flex flex-column p-4 justify-content-between position-sticky top-0" style="height: 100vh;">
+        <div>
+            <div class="d-flex align-items-center gap-2 py-3 border-bottom border-secondary border-opacity-25 mb-4">
+                <div class="bg-success rounded-3 p-2 d-inline-flex text-white btn-emerald-prime"><i class="bi bi-wallet2 fs-4"></i></div>
+                <h3 class="fw-bold text-white tracking-tight m-0">PayMe<span class="text-success">.</span></h3>
             </div>
-        </form>
-    </div>
-
-    <div class="card border-0 shadow-sm rounded-3 p-4">
-        <h5 class="fw-bold mb-3">Calculated Historical Records Ledger Logs</h5>
-        <div class="table-responsive">
-            <table class="table table-sm table-hover align-middle m-0">
-                <thead class="table-light text-secondary small text-uppercase">
-                    <tr>
-                        <th>ID Reference</th>
-                        <th>Name</th>
-                        <th>Filing Accounting Period Span</th>
-                        <th>Gross Pay</th>
-                        <th>Withholding Deductions</th>
-                        <th>Disbursed Net Salary</th>
-                        <th class="text-center">Invoice Action Receipt</th>
-                    </tr>
-                </thead>
-                <tbody class="small">
-                    {% for pay in payrolls %}
-                    <tr>
-                        <td class="fw-bold text-secondary">PAY-{{ pay.payroll_id|stringformat:"04d" }}</td>
-                        <td class="fw-semibold">{{ pay.employee.user.get_full_name }}</td>
-                        <td>{{ pay.payroll_period_start }} to {{ pay.payroll_period_end }}</td>
-                        <td>${{ pay.gross_salary }}</td>
-                        <td class="text-danger">-${{ pay.deductions }}</td>
-                        <td class="fw-bold text-success">${{ pay.net_salary }}</td>
-                        <td class="text-center">
-                            <a href="{% url 'view_payslip' pay.payroll_id %}" target="_blank" class="btn btn-xs btn-outline-dark py-0 px-3 fw-medium">
-                                <i class="bi bi-printer-fill me-1"></i> Print Slip
-                            </a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="7" class="text-center text-muted py-4">No payroll computation operations run during the current context timeline log.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <ul class="nav nav-pills flex-column gap-1">
+                <li><a href="{% url 'admin_dashboard' %}" class="nav-link"><i class="bi bi-grid-1x2-fill me-2"></i> Console</a></li>
+                <li><a href="{% url 'manage_employees' %}" class="nav-link"><i class="bi bi-person-badge me-2"></i> Roster Registry</a></li>
+                <li><a href="{% url 'payroll_computation' %}" class="nav-link active"><i class="bi bi-calculator-fill me-2"></i> Run Payroll</a></li>
+                <li><a href="{% url 'leave_manager' %}" class="nav-link"><i class="bi bi-calendar-range me-2"></i> Leave Manager</a></li>
+                <li><a href="{% url 'admin_payslips' %}" class="nav-link"><i class="bi bi-file-earmark-text me-2"></i> Payslips</a></li>
+                {% if request.user.profile.role == 'superadmin' %}
+                <li><a href="{% url 'admin_reports' %}" class="nav-link"><i class="bi bi-graph-up-arrow me-2"></i> Audits & Reports</a></li>
+                {% endif %}
+            </ul>
+        </div>
+        <div class="pt-3 border-top border-secondary border-opacity-25">
+            <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm w-100 fw-bold border-0 py-2"><i class="bi bi-box-arrow-left me-1"></i> Terminate</a>
         </div>
     </div>
 
-</div>
+    <div class="flex-grow-1 p-5 overflow-y-auto" style="height: 100vh;">
+        <div class="mb-5 pb-3 border-bottom">
+            <h2 class="fw-bold text-dark tracking-tight m-0">Semi-Monthly Processing Hub</h2>
+            <small class="text-muted fw-medium">Execute calculations matching dynamic 15th / End-of-Month Philippine cutoff targets.</small>
+        </div>
+
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show small shadow-sm border-0" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="card engine-card p-4 bg-white mb-4">
+            <h5 class="fw-bold text-dark mb-4 tracking-tight"><i class="bi bi-gear-wide-connected me-2 text-success"></i>Calculation Configuration</h5>
+            <form method="POST" action="{% url 'payroll_computation' %}">
+                {% csrf_token %}
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold text-secondary">Target Employee Profile</label>
+                        <select name="employee_id" class="form-select form-select-sm" required>
+                            {% for emp in employees %}
+                            <option value="{{ emp.employee_id }}">{{ emp.user.get_full_name }} (₱{{ emp.salary|floatformat:2 }}/mo)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold text-secondary">Target Processing Month</label>
+                        <input type="month" name="target_month" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold text-secondary">Processing Cycle</label>
+                        <select name="payroll_cycle" class="form-select form-select-sm" required>
+                            <option value="first_half">1st to 15th Cutoff (15th Paycheque)</option>
+                            <option value="second_half">16th to Month End (End-of-Month Paycheque)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn text-white btn-sm w-100 fw-bold btn-emerald-prime shadow-sm py-2 text-uppercase tracking-wider"><i class="bi bi-cpu-fill me-1"></i> Execute Run</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="card ledger-card p-4 bg-white">
+            <h5 class="fw-bold text-dark mb-4 tracking-tight"><i class="bi bi-receipt me-2 text-muted"></i>Historical Calculation Disbursal Ledger</h5>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle m-0 small">
+                    <thead class="table-light fw-bold text-muted text-uppercase" style="font-size: 0.72rem;">
+                        <tr>
+                            <th class="py-3 px-3">Batch ID</th>
+                            <th class="py-3">Name</th>
+                            <th class="py-3">Filing Window Frame</th>
+                            <th class="py-3">Gross Salary</th>
+                            <th class="py-3">Deductions (12%)</th>
+                            <th class="py-3 text-end px-3">Net Take-Home Pay</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in payrolls %}
+                        <tr>
+                            <td class="px-3 text-muted">PAY-{{ p.payroll_id }}</td>
+                            <td class="fw-bold text-dark">{{ p.employee.user.get_full_name }}</td>
+                            <td>{{ p.payroll_period_start }} &mdash; {{ p.payroll_period_end }}</td>
+                            <td>₱{{ p.gross_salary|floatformat:2 }}</td>
+                            <td class="text-danger">-₱{{ p.deductions|floatformat:2 }}</td>
+                            <td class="text-success fw-extrabold text-end px-3 fs-6">₱{{ p.net_salary|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-center text-muted py-5 border-0">No historical payroll execution items recorded inside this cycle.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

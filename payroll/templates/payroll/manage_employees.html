@@ -1,221 +1,141 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PayMe - Master Personnel Directory</title>
+    <title>PayMe Central - Workforce Directory</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
-    <style>
-        body {
-            background-color: #f8f9fa;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        .table-title-badge {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            padding: 0.4rem 0.75rem;
-            border-radius: 50px;
-        }
-        .card-container {
-            border: none;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-            background-color: #fff;
-            padding: 1.75rem;
-        }
-    </style>
+    <link href="{% static 'css/payroll.css' %}" rel="stylesheet">
 </head>
-<body>
+<body class="d-flex">
 
-<div class="container py-5">
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="sidebar d-flex flex-column p-4 justify-content-between position-sticky top-0" style="height: 100vh;">
         <div>
-            <a href="{% url 'admin_dashboard' %}" class="text-decoration-none small d-inline-flex align-items-center gap-1">
-                <i class="bi bi-arrow-left"></i> Back to Dashboard
-            </a>
-            <h2 class="fw-bold text-dark m-0 mt-2">Master Personnel Directory</h2>
-        </div>
-        <span class="badge bg-dark px-3 py-2 shadow-sm">Unified Corporate Directory</span>
-    </div>
-
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show shadow-sm small p-2 mb-4" role="alert">
-                <i class="bi bi-info-circle-fill me-2"></i> {{ message }}
-                <button type="button" class="btn-close p-2" data-bs-dismiss="alert" aria-label="Close"></button>
+            <div class="d-flex align-items-center gap-2 py-3 border-bottom border-secondary border-opacity-25 mb-4">
+                <div class="bg-success rounded-3 p-2 d-inline-flex text-white btn-emerald-prime"><i class="bi bi-wallet2 fs-4"></i></div>
+                <h3 class="fw-bold text-white tracking-tight m-0">PayMe<span class="text-success">.</span></h3>
             </div>
-        {% endfor %}
-    {% endif %}
-
-
-    <div class="card-container mb-5">
-        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-            <h5 class="fw-bold text-dark m-0 d-flex align-items-center">
-                <i class="bi bi-people-fill text-primary me-2"></i> Regular Employee Workforce
-            </h5>
-            <span class="table-title-badge bg-primary bg-opacity-10 text-primary fw-bold">
-                {{ regular_employees|length }} Registered Staff
-            </span>
+            <ul class="nav nav-pills flex-column gap-1">
+                <li><a href="{% url 'admin_dashboard' %}" class="nav-link"><i class="bi bi-grid-1x2-fill me-2"></i> Console</a></li>
+                <li><a href="{% url 'manage_employees' %}" class="nav-link active"><i class="bi bi-person-badge me-2"></i> Roster Registry</a></li>
+                <li><a href="{% url 'payroll_computation' %}" class="nav-link"><i class="bi bi-calculator-fill me-2"></i> Run Payroll</a></li>
+                <li><a href="{% url 'leave_manager' %}" class="nav-link"><i class="bi bi-calendar-range me-2"></i> Leave Manager</a></li>
+                <li><a href="{% url 'admin_payslips' %}" class="nav-link"><i class="bi bi-file-earmark-check me-2"></i> Payslips</a></li>
+                {% if request.user.profile.role == 'superadmin' %}
+                <li><a href="{% url 'admin_reports' %}" class="nav-link"><i class="bi bi-graph-up-arrow me-2"></i> Audits & Reports</a></li>
+                {% endif %}
+            </ul>
         </div>
-
-        <div class="table-responsive">
-            <table class="table table-hover align-middle m-0">
-                <thead class="table-light text-secondary small text-uppercase">
-                    <tr>
-                        <th>Employee ID</th>
-                        <th>Full Name Identity</th>
-                        <th>Account Assignment</th>
-                        <th>Department</th>
-                        <th>Position</th>
-                        <th>Base Salary</th>
-                        <th>Date Hired</th>
-                        <th class="text-center">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="small">
-                    {% for emp in regular_employees %}
-                    <tr>
-                        <td class="fw-bold text-secondary">EMP-{{ emp.employee_id|stringformat:"05d" }}</td>
-                        <td>
-                            <span class="fw-semibold text-dark">{{ emp.user.first_name }} {{ emp.user.last_name }}</span>
-                            <br><small class="text-muted">@{{ emp.user.username }}</small>
-                        </td>
-
-                        <form method="POST" action="">
-                            {% csrf_token %}
-                            <input type="hidden" name="user_id" value="{{ emp.user.id }}">
-
-                            <td>
-                                <select name="account_role" class="form-select form-select-sm fw-semibold mb-1" style="max-width: 130px;">
-                                    <option value="employee" selected>Employee</option>
-                                    <option value="admin">Admin Upgrade</option>
-                                </select>
-                                <select name="admin_type" class="form-select form-select-sm text-muted" style="max-width: 130px; font-size: 0.72rem; padding: 0.15rem 0.4rem;">
-                                    <option value="hr_manager">HR Manager</option>
-                                    <option value="business_owner">Business Owner</option>
-                                    <option value="it_admin">IT Admin</option>
-                                </select>
-                            </td>
-                            <td>
-                                <input type="text" name="department" value="{{ emp.department }}" class="form-control form-control-sm" required style="max-width: 130px;">
-                            </td>
-                            <td>
-                                <input type="text" name="position" value="{{ emp.position }}" class="form-control form-control-sm" required style="max-width: 130px;">
-                            </td>
-                            <td>
-                                <div class="input-group input-group-sm" style="max-width: 120px;">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" step="0.01" name="salary" value="{{ emp.salary }}" class="form-control" required>
-                                </div>
-                            </td>
-                            <td>
-                                <input type="date" name="date_hired" value="{{ emp.date_hired|date:'Y-m-d' }}" class="form-control form-control-sm" required style="max-width: 140px;">
-                            </td>
-                            <td class="text-center">
-                                <button type="submit" class="btn btn-sm btn-primary px-3 fw-bold shadow-sm">
-                                    <i class="bi bi-arrow-repeat me-1"></i> Sync
-                                </button>
-                            </td>
-                        </form>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="8" class="text-center text-muted py-5">
-                            <i class="bi bi-people fs-2 d-block mb-2 text-opacity-50"></i>
-                            No regular employee entries registered inside the active workforce pool.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="pt-3 border-top border-secondary border-opacity-25">
+            <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm w-100 fw-bold border-0 py-2"><i class="bi bi-box-arrow-left me-1"></i> Terminate</a>
         </div>
     </div>
 
-
-    <div class="card-container">
-        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-            <h5 class="fw-bold text-dark m-0 d-flex align-items-center">
-                <i class="bi bi-shield-lock-fill text-danger me-2"></i> Administrative Management Roster
-            </h5>
-            <span class="table-title-badge bg-danger bg-opacity-10 text-danger fw-bold">
-                {{ admin_personnel|length }} Appointed Management Accounts
-            </span>
+    <div class="flex-grow-1 p-5 overflow-y-auto" style="height: 100vh;">
+        <div class="mb-5 pb-3 border-bottom">
+            <h2 class="fw-bold text-dark tracking-tight m-0">Workforce Directory Management</h2>
+            <small class="text-muted fw-medium">Configure team configurations, departmental titles, and base parameters.</small>
         </div>
 
-        <div class="table-responsive">
-            <table class="table table-hover align-middle m-0">
-                <thead class="table-dark small text-uppercase">
-                    <tr>
-                        <th>Admin ID</th>
-                        <th>User Identity Info</th>
-                        <th>Account Role</th>
-                        <th>Access Classification Level</th>
-                        <th>Assigned Managing Scope</th>
-                        <th>Office Station Base</th>
-                        <th class="text-center">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="small">
-                    {% for adm in admin_personnel %}
-                    <tr>
-                        <td class="fw-bold text-danger">ADM-{{ adm.admin_id|stringformat:"03d" }}</td>
-                        <td>
-                            <span class="fw-semibold text-dark">{{ adm.user.first_name }} {{ adm.user.last_name }}</span>
-                            <br><small class="text-muted">@{{ adm.user.username }}</small>
-                        </td>
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show small shadow-sm border-0" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
 
-                        <form method="POST" action="">
-                            {% csrf_token %}
-                            <input type="hidden" name="user_id" value="{{ adm.user.id }}">
-
-                            <td>
-                                <select name="account_role" class="form-select form-select-sm fw-semibold text-danger border-danger" style="max-width: 125px;">
-                                    <option value="employee">Employee Demotion</option>
-                                    <option value="admin" selected>Admin</option>
-                                </select>
-                            </td>
-
-                            <td>
-                                {% if adm.admin_type == 'business_owner' %}
-                                    <span class="badge bg-dark text-warning border border-warning px-2 py-1"><i class="bi bi-crown-fill me-1"></i> Business Owner</span>
-                                {% elif adm.admin_type == 'it_admin' %}
-                                    <span class="badge bg-info-subtle text-info border border-info px-2 py-1"><i class="bi bi-cpu-fill me-1"></i> IT Admin</span>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card form-card p-4 position-sticky" style="top: 20px;">
+                    <h5 class="fw-bold text-dark mb-4 tracking-tight"><i class="bi bi-sliders me-2 text-success"></i>Profile Configurations</h5>
+                    <form method="POST" action="{% url 'manage_employees' %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">Target User UID Reference</label>
+                            <input type="number" name="user_id" class="form-control form-control-sm" placeholder="Look up account UID..." required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">System Role Clearance Level</label>
+                            <select name="account_role" class="form-select form-select-sm" {% if request.user.profile.role != 'superadmin' %}disabled{% endif %}>
+                                {% if request.user.profile.role == 'superadmin' %}
+                                    <option value="employee">Regular Employee Grid</option>
+                                    <option value="admin">Department Admin (Head)</option>
+                                    <option value="hr_manager">HR Manager (Head)</option>
+                                    <option value="payroll_officer">Payroll Officer (Head)</option>
+                                    <option value="superadmin">Transfer Ownership</option>
                                 {% else %}
-                                    <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1"><i class="bi bi-person-workspace me-1"></i> HR Manager</span>
+                                    <option value="employee" selected>Regular Employee Grid (Locked)</option>
                                 {% endif %}
-                            </td>
-                            <td>
-                                <span class="fw-medium text-secondary">{{ adm.managed_department }}</span>
-                            </td>
-                            <td>
-                                <span class="text-muted">{{ adm.office_location }}</span>
-                            </td>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">Department Assignment</label>
+                            {% if request.user.profile.role == 'superadmin' %}
+                            <select name="department" class="form-select form-select-sm" required>
+                                <option value="Executive Administration">Executive Administration</option>
+                                <option value="Human Resources">Human Resources</option>
+                                <option value="Finance & Payroll">Finance & Payroll</option>
+                                <option value="Information Technology">Information Technology</option>
+                                <option value="Sales & Marketing">Sales & Marketing</option>
+                                <option value="Operations">Operations</option>
+                            </select>
+                            {% else %}
+                            <input type="text" name="department" class="form-control form-control-sm bg-light fw-medium" value="{{ request.user.admin_profile.managed_department }}" readonly>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">Position Assignment Title</label>
+                            <select name="position" class="form-select form-select-sm" required>
+                                <option value="Junior Associate">Junior Associate</option>
+                                <option value="Senior Specialist">Senior Specialist</option>
+                                <option value="Team Consultant">Team Consultant</option>
+                                <option value="Department Supervisor">Department Supervisor</option>
+                                <option value="Operations Manager">Operations Manager</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold text-secondary">Base Monthly Salary (₱)</label>
+                            <input type="number" step="0.01" name="salary" class="form-control form-control-sm" required>
+                        </div>
+                        <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold shadow-sm py-2 text-uppercase tracking-wider">Commit Parameters</button>
+                    </form>
+                </div>
+            </div>
 
-                            <td class="text-center">
-                                <button type="submit" class="btn btn-sm btn-danger px-3 fw-bold shadow-sm">
-                                    <i class="bi bi-arrow-down-square me-1"></i> Demote
-                                </button>
-                            </td>
-                        </form>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="7" class="text-center text-muted py-5">
-                            <i class="bi bi-shield-slash fs-2 d-block mb-2 text-opacity-50"></i>
-                            No standalone administrator management profiles registered in your system yet.
-                        </td>
-                    </tr>
+            <div class="col-md-8">
+                <div class="card border-0 bg-transparent">
+                    <h5 class="fw-bold text-dark mb-4 tracking-tight"><i class="bi bi-list-check me-2 text-muted"></i>Active Directory Roster</h5>
+                    {% for current_user in all_users %}
+                    <div class="card roster-card p-3 mb-3 bg-white border-start border-4 {% if current_user.profile.role == 'superadmin' %}border-danger{% elif current_user.profile.role in 'admin,hr_manager,payroll_officer' %}border-primary{% else %}border-light{% endif %}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="fw-bold m-0 text-dark"><span class="badge bg-light text-secondary border me-2">UID: {{ current_user.id }}</span>{{ current_user.get_full_name|default:current_user.username }}</h6>
+                                {% if current_user.profile.role == 'superadmin' %}
+                                    <small class="text-danger fw-semibold d-block mt-1"><i class="bi bi-shield-fill-check me-1"></i>Business Owner (Superadmin)</small>
+                                {% elif current_user.profile.role in 'admin,hr_manager,payroll_officer' %}
+                                    <small class="text-primary fw-semibold d-block mt-1"><i class="bi bi-shield-shaded me-1"></i>{{ current_user.profile.get_role_display }} &mdash; {{ current_user.admin_profile.managed_department }}</small>
+                                {% else %}
+                                    <small class="text-muted d-block mt-1"><i class="bi bi-briefcase me-1"></i>{{ current_user.employee_profile.position }} &bull; <strong>{{ current_user.employee_profile.department }}</strong></small>
+                                {% endif %}
+                            </div>
+                            <div>
+                                {% if current_user.profile.role == 'employee' %}
+                                    <span class="badge badge-pesos-tag border px-3 py-2 fw-extrabold fs-6">₱{{ current_user.employee_profile.salary|floatformat:2 }}</span>
+                                {% else %}
+                                    <span class="badge bg-light text-secondary border px-3 py-2 fw-bold small">Administrative Access</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
                     {% endfor %}
-                </tbody>
-            </table>
+                </div>
+            </div>
         </div>
     </div>
-
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
