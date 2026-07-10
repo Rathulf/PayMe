@@ -33,7 +33,7 @@
                         <td class="fw-bold text-secondary">PAY-{{ pay.payroll_id|stringformat:"04d" }}</td>
                         <td class="fw-semibold">{{ pay.employee.user.get_full_name }}</td>
                         <td>{{ pay.payroll_period_start }} to {{ pay.payroll_period_end }}</td>
-                        <td class="fw-bold text-success">${{ pay.net_salary }}</td>
+                        <td class="fw-bold text-success">₱{{ pay.net_salary }}</td>
                         <td class="text-center">
                             <a href="{% url 'view_payslip' pay.payroll_id %}" target="_blank" class="btn btn-xs btn-outline-dark px-3 py-0">
                                 <i class="bi bi-eye-fill me-1"></i> View Receipt

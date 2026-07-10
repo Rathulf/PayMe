@@ -1,0 +1,98 @@
+:root {
+    --slate-dark: #1e252b;
+    --slate-muted: #2c353d;
+    --emerald: #10b981;
+    --emerald-hover: #059669;
+    --emerald-light: #ecfdf5;
+    --fintech-bg: #f4f6f8;
+    --slate-text-muted: #94a3b8;
+}
+
+body {
+    min-height: 100vh;
+    background-color: var(--fintech-bg);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.sidebar {
+    background-color: var(--slate-dark);
+    min-width: 260px;
+    max-width: 260px;
+    color: #f8fafc;
+    box-shadow: 4px 0 10px rgba(0,0,0,0.05);
+}
+
+.sidebar .nav-link {
+    color: var(--slate-text-muted);
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 0.8rem 1.2rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease-in-out;
+}
+
+.sidebar .nav-link:hover {
+    color: #fff;
+    background-color: var(--slate-muted);
+}
+
+.sidebar .nav-link.active {
+    color: #fff;
+    background-color: var(--emerald) !important;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+.stat-card {
+    border: none;
+    border-radius: 0.75rem;
+    background: #fff;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02), 0 2px 4px -1px rgba(0,0,0,0.01);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+}
+
+.form-card {
+    border: none;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    background: #fff;
+}
+
+.roster-card {
+    border: none;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+    background: #fff;
+}
+
+.table-container {
+    background: #fff;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+    border: none;
+}
+
+.btn-emerald-prime {
+    background-color: var(--emerald) !important;
+    color: #fff !important;
+}
+
+.btn-emerald-prime:hover {
+    background-color: var(--emerald-hover) !important;
+}
+
+.badge-pesos-tag {
+    border-color: rgba(16,185,129,0.2) !important;
+    background-color: var(--emerald-light) !important;
+    color: var(--emerald) !important;
+}
+
+@media print {
+    .sidebar, .no-print { display: none !important; }
+    .flex-grow-1 { padding: 0 !important; }
+    .card { box-shadow: none !important; border: 1px solid #dee2e6 !important; }
+}

@@ -1,17 +1,19 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django import forms
+from django.db import models
 from django.contrib.auth.models import User
 from django.db.models import Sum
 from django.utils import timezone
 from datetime import datetime
+import calendar
 from .models import Profile, Employee, Payroll, Leave, Attendance, Payslip, AdminProfile
 
 
-# --- 📋 REGISTRATION FORM DEFINITION ---
+# --- 📋 REGISTER FORM CLASS ---
 class CustomRegisterForm(UserCreationForm):
     first_name = forms.CharField(max_length=30, required=True,
                                  widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'First Name'}))
@@ -29,40 +31,44 @@ class CustomRegisterForm(UserCreationForm):
         return username
 
 
-# --- 🛡️ ACCESS GATEKEEPER PERMISSIONS ---
-def is_admin_user(user):
-    return user.is_authenticated and hasattr(user, 'profile') and user.profile.role == 'admin'
+# --- 🛡️ SECURITY AUTHS & GATEKEEPERS ---
+def is_superadmin(user):
+    return user.is_authenticated and hasattr(user, 'profile') and user.profile.role == 'superadmin'
 
 
-# --- 🔑 AUTHENTICATION AND SIGNUP VIEWS ---
+def is_management(user):
+    return user.is_authenticated and hasattr(user, 'profile') and user.profile.role in ['superadmin', 'admin',
+                                                                                        'hr_manager', 'payroll_officer']
+
+
+# --- 🔑 SESSIONS AND ACCOUNT ACCESS ---
 def register_view(request):
     if request.method == 'POST':
         form = CustomRegisterForm(request.POST)
         if form.is_valid():
-            user = form.save()
+            user = form.save(commit=False)
             user.first_name = form.cleaned_data.get('first_name')
             user.last_name = form.cleaned_data.get('last_name')
             user.email = form.cleaned_data.get('email')
+            user.save()
 
             user.profile.role = 'employee'
-            user.profile.status = 'inactive'
+            user.profile.status = 'active'
             user.profile.contact_no = form.cleaned_data.get('contact_no')
-            user.save()
+            user.profile.save()
 
             Employee.objects.get_or_create(
                 user=user,
                 defaults={
-                    'department': 'Pending Assignment',
-                    'position': 'Unassigned Staff',
-                    'salary': 0.00,
-                    'date_hired': user.date_joined.date()
+                    'department': 'Operations',
+                    'position': 'Junior Associate',
+                    'salary': 0.00
                 }
             )
-
-            messages.success(request, "Registration successful! Your account is pending administrator configuration.")
+            messages.success(request, "Registration successful! Proceed to Login.")
             return redirect('login')
         else:
-            messages.error(request, "Registration failed. Please correct the form validation errors.")
+            messages.error(request, "Registration failed. Please check form validation rules.")
     else:
         form = CustomRegisterForm()
     return render(request, 'payroll/register.html', {'form': form})
@@ -77,181 +83,182 @@ def login_view(request):
             user = authenticate(username=username, password=password)
             if user is not None:
                 login(request, user)
-                if user.profile.role == 'admin':
+                if user.profile.role in ['superadmin', 'admin', 'hr_manager', 'payroll_officer']:
                     return redirect('admin_dashboard')
-                else:
-                    return redirect('staff_dashboard')
-        else:
-            messages.error(request, "Invalid username or password.")
+                return redirect('staff_dashboard')
     else:
         form = AuthenticationForm()
     return render(request, 'payroll/login.html', {'form': form})
 
 
-# --- 📊 ADMINISTRATIVE HUB PANELS ---
+# --- 📊 MASTER EXECUTIVE CONSOLE ---
 @login_required
 def admin_dashboard(request):
-    if not is_admin_user(request.user):
-        return redirect('staff_dashboard')
+    if not is_management(request.user): return redirect('staff_dashboard')
+    user_role = request.user.profile.role
 
-    total_employees_count = Employee.objects.count()
-    today_date = timezone.now().date()
-    today_present_count = Attendance.objects.filter(work_date=today_date, attendance_status='Present').count()
-
-    if total_employees_count > 0:
-        total_payroll_calc = Payroll.objects.aggregate(total_sum=Sum('net_salary'))['total_sum'] or 0.00
-        pending_payslips_count = Payroll.objects.filter(payroll_status='Pending').count()
-        recent_activities_list = Payroll.objects.all().order_by('-payroll_id')[:5]
+    if user_role == 'superadmin':
+        total_employees = Employee.objects.count()
+        total_payroll = Payroll.objects.aggregate(total=Sum('net_salary'))['total'] or 0.00
     else:
-        total_payroll_calc = 0.00
-        pending_payslips_count = 0
-        recent_activities_list = []
+        dept = getattr(request.user.admin_profile, 'managed_department', 'General Operations')
+        total_employees = Employee.objects.filter(department=dept).count()
+        total_payroll = Payroll.objects.filter(employee__department=dept).aggregate(total=Sum('net_salary'))[
+                            'total'] or 0.00
 
-    context = {
-        'total_employees': total_employees_count,
-        'today_present': today_present_count,
-        'total_payroll_month': f"{total_payroll_calc:,.2f}",
-        'pending_payslips': pending_payslips_count,
-        'recent_activities': recent_activities_list,
-    }
-    return render(request, 'payroll/admin_dashboard.html', context)
+    return render(request, 'payroll/admin_dashboard.html', {
+        'total_employees': total_employees,
+        'total_payroll_month': f"₱{total_payroll:,.2f}"
+    })
 
 
+# --- 👥 DIRECTORY MATRIX MANAGEMENT ---
 @login_required
 def manage_employees(request):
-    if not is_admin_user(request.user):
-        return redirect('staff_dashboard')
+    if not is_management(request.user): return redirect('staff_dashboard')
+    user_role = request.user.profile.role
 
     if request.method == 'POST':
         user_id = request.POST.get('user_id')
         new_role = request.POST.get('account_role')
-        selected_type = request.POST.get('admin_type', 'hr_manager')
+        target_dept = request.POST.get('department', '').strip()
+        target_pos = request.POST.get('position', '').strip()
+        salary_input = request.POST.get('salary')
 
         try:
-            user_account = User.objects.get(pk=user_id)
+            target_user = User.objects.get(pk=user_id)
 
-            if new_role == 'admin':
-                user_account.profile.role = 'admin'
-                user_account.profile.status = 'active'
-                user_account.is_staff = True
-                user_account.save()
-                user_account.profile.save()
+            if user_role != 'superadmin':
+                admin_dept = request.user.admin_profile.managed_department
+                if not hasattr(target_user,
+                               'employee_profile') or target_user.employee_profile.department != admin_dept:
+                    messages.error(request, "Access Denied: You cannot modify parameters outside your own department.")
+                    return redirect('manage_employees')
 
-                admin_row, created = AdminProfile.objects.get_or_create(user=user_account)
-                admin_row.admin_type = selected_type
-
-                if selected_type == 'business_owner':
-                    admin_row.managed_department = 'Global Executive Oversight'
-                elif selected_type == 'it_admin':
-                    admin_row.managed_department = 'IT Infrastructure & Security'
-                else:
-                    admin_row.managed_department = request.POST.get('department', 'Human Resources')
-
-                admin_row.save()
-                Employee.objects.filter(user=user_account).delete()
-                messages.success(request, f"Successfully assigned Admin settings for {user_account.get_full_name()}!")
+                emp = target_user.employee_profile
+                if target_pos: emp.position = target_pos
+                if salary_input: emp.salary = salary_input
+                emp.save()
+                messages.success(request, f"Successfully updated records for {target_user.get_full_name()}.")
 
             else:
-                user_account.profile.role = 'employee'
-                user_account.is_staff = False
-                user_account.save()
-                user_account.profile.save()
+                if new_role == 'superadmin':
+                    if Profile.objects.filter(role='superadmin').exclude(user=target_user).exists():
+                        messages.error(request, "Operation Aborted: Only 1 Single Business Owner Superadmin can exist.")
+                        return redirect('manage_employees')
 
-                AdminProfile.objects.filter(user=user_account).delete()
+                    target_user.profile.role = 'superadmin'
+                    target_user.is_staff = True
+                    target_user.save()
+                    target_user.profile.save()
+                    AdminProfile.objects.filter(user=target_user).delete()
+                    Employee.objects.filter(user=target_user).delete()
+                    messages.success(request, f"Global Ownership transferred safely to {target_user.get_full_name()}.")
 
-                employee, created = Employee.objects.get_or_create(
-                    user=user_account,
-                    defaults={'salary': 0.00, 'date_hired': user_account.date_joined.date()}
-                )
-                employee.department = request.POST.get('department', 'General')
-                employee.position = request.POST.get('position', 'Staff')
-                employee.salary = request.POST.get('salary', 0.00) or 0.00
-                employee.date_hired = request.POST.get('date_hired')
-                employee.save()
+                elif new_role in ['admin', 'hr_manager', 'payroll_officer']:
+                    target_user.profile.role = new_role
+                    target_user.is_staff = True
+                    target_user.save()
+                    target_user.profile.save()
 
-                messages.success(request,
-                                 f"Successfully reverted {user_account.get_full_name()} to employee data grid.")
+                    admin_prof, _ = AdminProfile.objects.get_or_create(user=target_user)
+                    admin_prof.managed_department = target_dept if target_dept else 'Operations'
+                    admin_prof.save()
+                    Employee.objects.filter(user=target_user).delete()
+                    messages.success(request,
+                                     f"{target_user.get_full_name()} assigned as Admin Head for {admin_prof.managed_department}.")
+
+                else:
+                    target_user.profile.role = 'employee'
+                    target_user.is_staff = False
+                    target_user.save()
+                    target_user.profile.save()
+                    AdminProfile.objects.filter(user=target_user).delete()
+
+                    emp, _ = Employee.objects.get_or_create(user=target_user)
+                    emp.department = target_dept or 'Operations'
+                    emp.position = target_pos or 'Junior Associate'
+                    if salary_input: emp.salary = salary_input
+                    emp.save()
+                    messages.success(request, f"Configured {target_user.get_full_name()} as regular employee.")
 
         except User.DoesNotExist:
-            messages.error(request, "Target user record could not be located.")
-
+            messages.error(request, "Target user record missing.")
         return redirect('manage_employees')
 
-    regular_employees = Employee.objects.all().select_related('user').order_by('employee_id')
-    admin_personnel = AdminProfile.objects.all().select_related('user').order_by('admin_id')
+    if user_role == 'superadmin':
+        all_users = User.objects.all().select_related('profile', 'employee_profile', 'admin_profile').order_by('id')
+    else:
+        admin_dept = request.user.admin_profile.managed_department
+        all_users = User.objects.filter(employee_profile__department=admin_dept).select_related('profile',
+                                                                                                'employee_profile').order_by(
+            'id')
 
-    return render(request, 'payroll/manage_employees.html', {
-        'regular_employees': regular_employees,
-        'admin_personnel': admin_personnel
-    })
+    return render(request, 'payroll/manage_employees.html', {'all_users': all_users})
 
 
-# --- 🕒 SYSTEM OPERATION MODULES ---
+# --- 🕒 SHIFTS TRACKER ---
 @login_required
 def attendance_tracker(request):
-    if not is_admin_user(request.user):
-        return redirect('staff_dashboard')
+    if not is_management(request.user): return redirect('admin_dashboard')
+    user_role = request.user.profile.role
 
     if request.method == 'POST':
         emp_id = request.POST.get('employee_id')
         work_date = request.POST.get('work_date')
-        hours_worked = request.POST.get('hours_worked', 8.0)
         status = request.POST.get('attendance_status', 'Present')
 
         try:
             employee = Employee.objects.get(pk=emp_id)
-            Attendance.objects.create(
-                employee=employee,
-                work_date=work_date,
-                hours_worked=hours_worked,
-                attendance_status=status
-            )
-            messages.success(request, f"Attendance log committed for {employee.user.get_full_name()}.")
-        except Employee.DoesNotExist:
-            messages.error(request, "Employee row profile entry not found.")
+            if user_role != 'superadmin' and employee.department != request.user.admin_profile.managed_department:
+                messages.error(request, "Unauthorized operation.")
+            else:
+                Attendance.objects.create(employee=employee, work_date=work_date, hours_worked=8.0,
+                                          attendance_status=status)
+                messages.success(request, f"Attendance logged for {employee.user.get_full_name()}.")
+        except Exception as e:
+            messages.error(request, f"Failure to commit: {str(e)}")
         return redirect('attendance_tracker')
 
-    employees = Employee.objects.all().select_related('user')
-    attendance_records = Attendance.objects.all().select_related('employee__user').order_by('-work_date')[:15]
-    return render(request, 'payroll/attendance_tracker.html', {
-        'employees': employees,
-        'attendance_records': attendance_records
-    })
+    if user_role == 'superadmin':
+        employees = Employee.objects.all().select_related('user')
+        attendance_records = Attendance.objects.all().select_related('employee__user').order_by('-work_date')[:15]
+    else:
+        dept = request.user.admin_profile.managed_department
+        employees = Employee.objects.filter(department=dept).select_related('user')
+        attendance_records = Attendance.objects.filter(employee__department=dept).select_related(
+            'employee__user').order_by('-work_date')[:15]
+
+    return render(request, 'payroll/attendance_tracker.html',
+                  {'employees': employees, 'attendance_records': attendance_records})
 
 
+# --- 🗓️ ABSENCE FLOW PORTER ---
 @login_required
 def leave_manager(request):
-    if request.method == 'POST':
-        if is_admin_user(request.user) and 'update_status' in request.POST:
-            leave_id = request.POST.get('leave_id')
-            new_status = request.POST.get('status')
-            Leave.objects.filter(pk=leave_id).update(status=new_status)
-            messages.success(request, "Leave state modified successfully.")
-            return redirect('leave_manager')
+    if request.method == 'POST' and request.user.profile.role == 'employee':
+        try:
+            employee = request.user.employee_profile
+            start_date = datetime.strptime(request.POST.get('start_date'), '%Y-%m-%d').date()
+            end_date = datetime.strptime(request.POST.get('end_date'), '%Y-%m-%d').date()
+            Leave.objects.create(
+                employee=employee, leave_type=request.POST.get('leave_type'),
+                start_date=start_date, end_date=end_date,
+                total_days=(end_date - start_date).days + 1,
+                reason=request.POST.get('reason'), status='Pending'
+            )
+            messages.success(request, "Absence request uploaded.")
+        except Exception:
+            messages.error(request, "Calculation mismatch error.")
+        return redirect('leave_manager')
 
-        elif request.user.profile.role == 'employee':
-            try:
-                employee = request.user.employee_profile
-                start_date = datetime.strptime(request.POST.get('start_date'), '%Y-%m-%d').date()
-                end_date = datetime.strptime(request.POST.get('end_date'), '%Y-%m-%d').date()
-                total_days = (end_date - start_date).days + 1
-
-                Leave.objects.create(
-                    employee=employee,
-                    leave_type=request.POST.get('leave_type'),
-                    start_date=start_date,
-                    end_date=end_date,
-                    total_days=total_days,
-                    reason=request.POST.get('reason'),
-                    status='Pending'
-                )
-                messages.success(request, "Leave submission uploaded successfully.")
-            except Exception:
-                messages.error(request, "Failed to compute timelines. Verify parameters.")
-            return redirect('leave_manager')
-
-    if is_admin_user(request.user):
+    user_role = request.user.profile.role
+    if user_role == 'superadmin':
         leaves = Leave.objects.all().select_related('employee__user').order_by('-date_requested')
+    elif user_role in ['admin', 'hr_manager', 'payroll_officer']:
+        dept = request.user.admin_profile.managed_department
+        leaves = Leave.objects.filter(employee__department=dept).select_related('employee__user').order_by(
+            '-date_requested')
     else:
         leaves = Leave.objects.filter(employee=request.user.employee_profile).order_by('-date_requested')
 
@@ -259,56 +266,138 @@ def leave_manager(request):
 
 
 @login_required
+def approve_leave(request, leave_id):
+    if not is_management(request.user): return redirect('admin_dashboard')
+    leave = get_object_or_404(Leave, pk=leave_id)
+    if request.user.profile.role != 'superadmin' and leave.employee.department != request.user.admin_profile.managed_department:
+        messages.error(request, "Unauthorized boundary shift.")
+    else:
+        leave.status = 'Approved'
+        leave.save()
+        messages.success(request, "Leave entry approved.")
+    return redirect('leave_manager')
+
+
+@login_required
+def reject_leave(request, leave_id):
+    if not is_management(request.user): return redirect('admin_dashboard')
+    leave = get_object_or_404(Leave, pk=leave_id)
+    if request.user.profile.role != 'superadmin' and leave.employee.department != request.user.admin_profile.managed_department:
+        messages.error(request, "Unauthorized boundary shift.")
+    else:
+        leave.status = 'Rejected'
+        leave.save()
+        messages.warning(request, "Leave entry rejected.")
+    return redirect('leave_manager')
+
+
+# --- ₱ AUTOMATED SEMI-MONTHLY CALCULATION RUNS ---
+@login_required
 def payroll_computation(request):
-    if not is_admin_user(request.user):
-        return redirect('staff_dashboard')
+    if not is_management(request.user): return redirect('admin_dashboard')
+    user_role = request.user.profile.role
 
     if request.method == 'POST':
         emp_id = request.POST.get('employee_id')
-        start_date = request.POST.get('period_start')
-        end_date = request.POST.get('period_end')
+        target_month_str = request.POST.get('target_month')
+        payroll_cycle = request.POST.get('payroll_cycle')
 
         try:
             employee = Employee.objects.get(pk=emp_id)
-            gross = float(employee.salary)
-            deductions = gross * 0.12
-            net = gross - deductions
+            if user_role != 'superadmin' and employee.department != request.user.admin_profile.managed_department:
+                messages.error(request, "Execution boundary protection block triggered.")
+                return redirect('payroll_computation')
+
+            year, month = map(int, target_month_str.split('-'))
+
+            if payroll_cycle == 'first_half':
+                start_date = datetime(year, month, 1).date()
+                end_date = datetime(year, month, 15).date()
+                cycle_label = "15th Day Cycle"
+            else:
+                start_date = datetime(year, month, 16).date()
+                last_day = calendar.monthrange(year, month)[1]
+                end_date = datetime(year, month, last_day).date()
+                cycle_label = "End-of-Month Cycle"
+
+            attendance_logs = Attendance.objects.filter(employee=employee, work_date__range=[start_date, end_date],
+                                                        attendance_status='Present')
+            total_hours = attendance_logs.aggregate(total=Sum('hours_worked'))['total'] or 0
+
+            hourly_rate = float(employee.salary) / 160.0
+            gross_salary = float(total_hours) * hourly_rate
+            deductions = gross_salary * 0.12
+            net_salary = gross_salary - deductions
 
             payroll = Payroll.objects.create(
-                employee=employee,
-                payroll_period_start=start_date,
-                payroll_period_end=end_date,
-                gross_salary=gross,
-                deductions=deductions,
-                net_salary=net,
-                payroll_status='Completed'
+                employee=employee, payroll_period_start=start_date, payroll_period_end=end_date,
+                gross_salary=gross_salary, deductions=deductions, net_salary=net_salary, payroll_status='Completed'
             )
-
-            Payslip.objects.create(
-                payroll=payroll,
-                issue_date=timezone.now().date(),
-                remarks=f"Automated system run processing cycle executed on {timezone.now().date()}."
-            )
-            messages.success(request,
-                             f"Payroll accounting ledger structured successfully for {employee.user.get_full_name()}!")
+            Payslip.objects.create(payroll=payroll, issue_date=timezone.now().date(),
+                                   remarks=f"Semi-Monthly Calculation [{cycle_label}]. Total Hours: {total_hours}. Rate: ₱{hourly_rate:.2f}/hr.")
+            messages.success(request, f"Successfully compiled {cycle_label} for {employee.user.get_full_name()}!")
         except Exception as e:
-            messages.error(request, f"Transactional computation fault: {str(e)}")
+            messages.error(request, f"Anomaly caught: {str(e)}")
         return redirect('payroll_computation')
 
-    employees = Employee.objects.all().select_related('user')
-    payrolls = Payroll.objects.all().select_related('employee__user').order_by('-payroll_id')
-    return render(request, 'payroll/payroll_computation.html', {
-        'employees': employees,
-        'payrolls': payrolls
-    })
+    if user_role == 'superadmin':
+        employees = Employee.objects.all().select_related('user')
+        payrolls = Payroll.objects.all().select_related('employee__user').order_by('-payroll_id')
+    else:
+        dept = request.user.admin_profile.managed_department
+        employees = Employee.objects.filter(department=dept).select_related('user')
+        payrolls = Payroll.objects.filter(employee__department=dept).select_related('employee__user').order_by(
+            '-payroll_id')
+
+    return render(request, 'payroll/payroll_computation.html', {'employees': employees, 'payrolls': payrolls})
 
 
 @login_required
 def admin_payslips(request):
-    if not is_admin_user(request.user):
-        return redirect('staff_dashboard')
-    payrolls = Payroll.objects.all().select_related('employee__user').order_by('-payroll_id')
+    if not is_management(request.user): return redirect('admin_dashboard')
+    user_role = request.user.profile.role
+    if user_role == 'superadmin':
+        payrolls = Payroll.objects.all().select_related('employee__user').order_by('-payroll_id')
+    else:
+        dept = request.user.admin_profile.managed_department
+        payrolls = Payroll.objects.filter(employee__department=dept).select_related('employee__user').order_by(
+            '-payroll_id')
     return render(request, 'payroll/admin_payslips.html', {'payrolls': payrolls})
+
+
+# --- 📉 SYSTEM CORPORATE AUDIT REPORTS ---
+@login_required
+def admin_reports(request):
+    if not is_superadmin(request.user):
+        messages.error(request, "Access Denied: Operational audits are restricted to the Business Owner.")
+        return redirect('admin_dashboard')
+
+    total_spend = Payroll.objects.aggregate(total=Sum('net_salary'))['total'] or 0.00
+    total_gross = Payroll.objects.aggregate(total=Sum('gross_salary'))['total'] or 0.00
+    total_deductions = Payroll.objects.aggregate(total=Sum('deductions'))['total'] or 0.00
+
+    total_personnel = Employee.objects.count()
+    active_leaves_count = Leave.objects.filter(status='Approved').count()
+    pending_leaves_count = Leave.objects.filter(status='Pending').count()
+
+    departmental_costs = Employee.objects.values('department').annotate(
+        total_allocated=Sum('salary'),
+        staff_count=models.Count('employee_id')
+    ).order_by('-total_allocated')
+
+    historical_runs = Payroll.objects.select_related('employee__user').order_by('-payroll_id')[:10]
+
+    context = {
+        'total_spend': f"₱{total_spend:,.2f}",
+        'total_gross': f"₱{total_gross:,.2f}",
+        'total_deductions': f"₱{total_deductions:,.2f}",
+        'total_personnel': total_personnel,
+        'active_leaves': active_leaves_count,
+        'pending_leaves': pending_leaves_count,
+        'departments': departmental_costs,
+        'historical_runs': historical_runs,
+    }
+    return render(request, 'payroll/admin_reports.html', context)
 
 
 @login_required
@@ -317,58 +406,34 @@ def view_payslip(request, payroll_id):
         payroll = Payroll.objects.select_related('employee__user', 'payslip').get(pk=payroll_id)
         if request.user.profile.role == 'employee' and payroll.employee != request.user.employee_profile:
             return redirect('staff_dashboard')
-        return render(request, 'payroll/view_payslip.html', {'payroll': payroll})
+        return render(request, 'payroll/view_payslip.html',
+                      {'payroll': payroll, 'clean_remarks': payroll.payslip.remarks or ""})
     except Payroll.DoesNotExist:
-        messages.error(request, "Target invoice reference index could not be located.")
-        return redirect('admin_dashboard' if request.user.profile.role == 'admin' else 'staff_dashboard')
-
-
-# --- 👥 EMPLOYEE END-USER PANEL WORKSPACE ---
-@login_required
-def staff_dashboard(request):
-    if is_admin_user(request.user):
         return redirect('admin_dashboard')
 
+
+# --- 👥 EMPLOYEE ACCESS DESK ---
+@login_required
+def staff_dashboard(request):
+    if is_management(request.user): return redirect('admin_dashboard')
     try:
         employee = request.user.employee_profile
     except Employee.DoesNotExist:
-        messages.error(request, "Employee profile record missing.")
         return redirect('logout')
 
     if request.method == 'POST' and 'clock_in' in request.POST:
         work_date = request.POST.get('work_date')
-        hours_worked = request.POST.get('hours_worked', 8.0)
-
-        already_logged = Attendance.objects.filter(employee=employee, work_date=work_date).exists()
-        if already_logged:
-            messages.warning(request, f"You have already submitted an attendance log for {work_date}.")
-        else:
-            Attendance.objects.create(
-                employee=employee,
-                work_date=work_date,
-                hours_worked=hours_worked,
-                attendance_status='Present'
-            )
-            messages.success(request, f"Attendance for {work_date} successfully logged!")
+        if not Attendance.objects.filter(employee=employee, work_date=work_date).exists():
+            Attendance.objects.create(employee=employee, work_date=work_date, hours_worked=8.0,
+                                      attendance_status='Present')
+            messages.success(request, "Shift logged successfully.")
         return redirect('staff_dashboard')
 
     my_payrolls = Payroll.objects.filter(employee=employee).order_by('-payroll_id')
     my_attendance = Attendance.objects.filter(employee=employee).order_by('-work_date')[:10]
+    return render(request, 'payroll/staff_dashboard.html', {'my_payrolls': my_payrolls, 'my_attendance': my_attendance})
 
-    context = {
-        'my_payrolls': my_payrolls,
-        'my_attendance': my_attendance,
-    }
-    return render(request, 'payroll/staff_dashboard.html', context)
 
-@login_required
-def admin_reports(request):
-    """Placeholder view for generating HR and system payroll analytics reports."""
-    if not is_admin_user(request.user):
-        return redirect('staff_dashboard')
-    return render(request, 'payroll/admin_reports.html')
-
-# --- 🚪 LOGOUT SYSTEM DESTRUCTION PIPELINE ---
 def logout_view(request):
-    logout(request)
+    logout(request);
     return redirect('login')
