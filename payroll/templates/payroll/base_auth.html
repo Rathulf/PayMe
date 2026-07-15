@@ -1,0 +1,19 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}PayMe Auth{% endblock %}</title>
+
+    <!-- This links to your new, dedicated auth stylesheet -->
+    <link rel="stylesheet" href="{% static 'css/auth-styles.css' %}">
+</head>
+<body class="auth-body">
+
+    {% block content %}
+    <!-- Your Login/Register content will be injected here -->
+    {% endblock %}
+
+</body>
+</html>

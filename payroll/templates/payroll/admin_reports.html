@@ -1,15 +1,132 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>PayMe - System Reports</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-<div class="container py-5">
-    <a href="{% url 'admin_dashboard' %}" class="text-decoration-none small">◀ Back to Dashboard</a>
-    <h2 class="fw-bold text-dark mt-2">System Analytics & Reports</h2>
-    <p class="text-muted">Payroll and workforce reporting modules coming soon.</p>
+{% extends 'payroll/base.html' %}
+
+{% block title %}PayMe Central - Audits & Analytics Reports{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-5 pb-3 border-bottom border-light">
+    <div>
+        <h2 class="fw-bold text-dark tracking-tight m-0">Corporate Financial Audits</h2>
+        <small class="text-muted fw-medium">Unified analytics reporting dashboard for project expenditures and resource pooling.</small>
+    </div>
+    <div class="no-print">
+        <button onclick="window.print()" class="btn btn-sm btn-dark fw-bold px-3 py-2 shadow-sm"><i class="bi bi-printer-fill me-1"></i> Export Statement Report</button>
+    </div>
 </div>
-</body>
-</html>
+
+<div class="row g-4 mb-5">
+    <div class="col-md-4">
+        <div class="card stat-card p-4 border-start border-4 border-success">
+            <span class="text-uppercase text-muted fw-bold tracking-wider d-block mb-1" style="font-size: 0.65rem;">Net Disbursed Capital</span>
+            <h2 class="fw-extrabold text-success tracking-tight m-0">{{ total_spend }}</h2>
+            <small class="text-muted d-block mt-2">Aggregated company take-home payout history.</small>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card p-4 border-start border-4 border-primary">
+            <span class="text-uppercase text-muted fw-bold tracking-wider d-block mb-1" style="font-size: 0.65rem;">Gross Operational Commitments</span>
+            <h2 class="fw-extrabold text-primary tracking-tight m-0">{{ total_gross }}</h2>
+            <small class="text-muted d-block mt-2">Pre-deduction baseline labor costs costs.</small>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card p-4 border-start border-4 border-danger">
+            <span class="text-uppercase text-muted fw-bold tracking-wider d-block mb-1" style="font-size: 0.65rem;">Statutory Deductions Pool (12%)</span>
+            <h2 class="fw-extrabold text-danger tracking-tight m-0">{{ total_deductions }}</h2>
+            <small class="text-muted d-block mt-2">Withheld capital reserved for corporate remittance mapping.</small>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-5">
+    <div class="col-md-6">
+        <div class="card table-container p-4 h-100">
+            <h5 class="fw-bold text-dark tracking-tight mb-4"><i class="bi bi-diagram-3 me-2 text-muted"></i>Departmental Budget Distribution</h5>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle m-0">
+                    <thead class="table-light text-uppercase font-monospace text-muted" style="font-size: 0.7rem;">
+                        <tr>
+                            <th>Corporate Branch</th>
+                            <th class="text-center">Headcount</th>
+                            <th class="text-end">Base Allocation /mo</th>
+                        </tr>
+                    </thead>
+                    <tbody style="font-size: 0.85rem;">
+                        {% for dept in departments %}
+                        <tr>
+                            <td class="fw-bold text-dark">{{ dept.department }}</td>
+                            <td class="text-center"><span class="badge bg-light text-dark border px-2 py-1">{{ dept.staff_count }} Staff</span></td>
+                            <td class="text-end fw-semibold text-success">₱{{ dept.total_allocated|default:0.00|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3" class="text-center py-4 text-muted italic">No department data compiled inside project mapping matrices.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card table-container p-4 h-100">
+            <h5 class="fw-bold text-dark tracking-tight mb-4"><i class="bi bi-calendar-check me-2 text-muted"></i>Operational Resource Integrity</h5>
+            <div class="list-group list-group-flush gap-3">
+                <div class="d-flex justify-content-between align-items-center p-3 rounded bg-light border-0">
+                    <div>
+                        <strong class="text-dark d-block">Platform Registered Headcount</strong>
+                        <small class="text-muted">Total worker entities tracked across the company network.</small>
+                    </div>
+                    <span class="fs-3 fw-extrabold text-dark px-3">{{ total_personnel }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-3 rounded bg-light border-0">
+                    <div>
+                        <strong class="text-success d-block">Approved Absence Forms</strong>
+                        <small class="text-muted">Currently active or processed approved leave entries.</small>
+                    </div>
+                    <span class="fs-3 fw-extrabold text-success px-3">{{ active_leaves }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-3 rounded bg-light border-0">
+                    <div>
+                        <strong class="text-warning d-block">Pending Leave Operations</strong>
+                        <small class="text-muted">Filing queue requests currently awaiting executive validation signature.</small>
+                    </div>
+                    <span class="fs-3 fw-extrabold text-warning px-3">{{ pending_leaves }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card table-container p-4">
+    <h5 class="fw-bold text-dark tracking-tight mb-4"><i class="bi bi-shield-check me-2 text-muted"></i>Master Transaction Settlement Ledger Trail</h5>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle m-0 small">
+            <thead class="table-light text-uppercase font-monospace text-muted" style="font-size: 0.7rem;">
+                <tr>
+                    <th>Trace ID</th>
+                    <th>Staff Employee Name</th>
+                    <th>Corporate Branch</th>
+                    <th>Filing Range Frame</th>
+                    <th>Gross Pay</th>
+                    <th>Tax Deduct</th>
+                    <th class="text-end">Net Disbursed Take-Home</th>
+                </tr>
+            </thead>
+            <tbody style="font-size: 0.82rem;">
+                {% for run in historical_runs %}
+                <tr>
+                    <td class="text-muted font-monospace fw-bold">PAY-{{ run.payroll_id }}</td>
+                    <td class="fw-bold text-dark">{{ run.employee.user.get_full_name }}</td>
+                    <td><span class="badge bg-light text-secondary border">{{ run.employee.department }}</span></td>
+                    <td>{{ run.payroll_period_start }} to {{ run.payroll_period_end }}</td>
+                    <td>₱{{ run.gross_salary|floatformat:2 }}</td>
+                    <td class="text-danger">-₱{{ run.deductions|floatformat:2 }}</td>
+                    <td class="fw-bold text-success text-end">₱{{ run.net_salary|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center py-4 text-muted italic">No processing batches executed yet within database ledger matrices.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
