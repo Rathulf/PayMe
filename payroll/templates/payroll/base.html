@@ -1,0 +1,49 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}PayMe Central{% endblock %}</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="{% static 'css/payroll.css' %}" rel="stylesheet">
+
+    <style>
+        @media print {
+            .sidebar, .no-print { display: none !important; }
+            .flex-grow-1 { padding: 0 !important; }
+            .card { box-shadow: none !important; border: 1px solid #dee2e6 !important; }
+        }
+    </style>
+</head>
+<body class="d-flex">
+
+    <!-- 🌟 MODULAR SIDEBAR INJECTION -->
+    {% include 'payroll/includes/sidebar.html' %}
+
+    <!-- MAIN CANVAS WORKSPACE -->
+    <div class="flex-grow-1 p-5 overflow-y-auto" style="height: 100vh;">
+
+        <!-- Global Alert Handler -->
+        {% if messages %}
+        <div class="mb-4 no-print">
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show small shadow-sm border-0" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Unique Page Content Injected Here -->
+        {% block content %}
+        {% endblock %}
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

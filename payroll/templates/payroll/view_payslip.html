@@ -1,87 +1,82 @@
-<!-- 📂 Location: templates/payroll/view_payslip.html -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>PayMe Remittance - Statement Voucher</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
-    <style>
-        @media print {
-            .no-print { display: none !important; }
-            .card { border: none !important; box-shadow: none !important; }
-        }
-    </style>
-</head>
-<body class="bg-light">
-<div class="container py-5" style="max-width: 800px;">
+{% extends 'payroll/base.html' %}
 
-    <div class="no-print d-flex justify-content-between align-items-center mb-4">
-        <a href="{% if request.user.profile.role == 'admin' %}{% url 'payroll_computation' %}{% else %}{% url 'staff_dashboard' %}{% endif %}" class="text-decoration-none small">
-            <i class="bi bi-arrow-left"></i> Back to Logs
-        </a>
-        <button onclick="window.print()" class="btn btn-dark btn-sm fw-bold shadow-sm"><i class="bi bi-printer me-1"></i> Print Statement</button>
+{% block title %}Payslip Document - {{ payroll.employee.user.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="mb-4 pb-3 border-bottom no-print d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="fw-bold text-dark tracking-tight m-0">Document Viewer</h2>
+        <small class="text-muted fw-medium">Official printable settlement voucher.</small>
+    </div>
+    <button onclick="window.print()" class="btn btn-sm btn-dark fw-bold px-3 py-2 shadow-sm"><i class="bi bi-printer-fill me-1"></i> Print / Export to PDF</button>
+</div>
+
+<!-- 🖨️ THE PHYSICAL PRINTABLE PAYSLIP CARD -->
+<div class="card table-container p-5 mx-auto shadow-lg" style="max-width: 800px; border-top: 6px solid var(--emerald) !important;">
+    
+    <!-- Header Grid -->
+    <div class="d-flex justify-content-between align-items-center border-bottom pb-4 mb-4">
+        <div class="d-flex align-items-center gap-2">
+            <div class="bg-success rounded-3 p-2 d-inline-flex text-white btn-emerald-prime">
+                <i class="bi bi-wallet2 fs-4"></i>
+            </div>
+            <h3 class="fw-bold text-dark tracking-tight m-0">PayMe<span class="text-success">.</span></h3>
+        </div>
+        <div class="text-end">
+            <h4 class="fw-extrabold text-uppercase text-muted m-0 tracking-wider">Settlement Slip</h4>
+            <small class="text-secondary font-monospace fw-medium">REF: PAY-{{ payroll.payroll_id }}-{{ payroll.payslip.payslip_id }}</small>
+        </div>
     </div>
 
-    <div class="card border-0 shadow-sm p-5 bg-white rounded-3">
-        <div class="d-flex justify-content-between align-items-start border-bottom pb-3 mb-4">
-            <div>
-                <h3 class="fw-bold text-dark uppercase m-0">PAYME LABERS CO.</h3>
-                <small class="text-muted text-uppercase tracking-wider" style="font-size: 0.68rem;">Official Remittance E-Receipt</small>
-            </div>
-            <div class="text-end">
-                <span class="badge bg-dark px-3 py-1 fw-bold">REF-ID: PAY-{{ payroll.payroll_id }}</span>
-                <small class="d-block text-muted mt-1" style="font-size: 0.78rem;">Issued: {{ payroll.payslip.issue_date }}</small>
-            </div>
+    <!-- Identity and Date Grid -->
+    <div class="row mb-5">
+        <div class="col-sm-6">
+            <h6 class="fw-bold text-muted text-uppercase mb-1 tracking-wider" style="font-size: 0.70rem;">Employee Profile</h6>
+            <h5 class="fw-bold text-dark mb-0">{{ payroll.employee.user.get_full_name }}</h5>
+            <div class="text-secondary small mt-1">{{ payroll.employee.position }}</div>
+            <div class="text-secondary small">{{ payroll.employee.department }}</div>
         </div>
+        <div class="col-sm-6 text-end">
+            <h6 class="fw-bold text-muted text-uppercase mb-1 tracking-wider" style="font-size: 0.70rem;">Cutoff Calculation Window</h6>
+            <h5 class="fw-bold text-dark mb-0">{{ payroll.payroll_period_start|date:"M d, Y" }}</h5>
+            <div class="text-secondary small mt-1">to {{ payroll.payroll_period_end|date:"M d, Y" }}</div>
+            <div class="text-muted small mt-2 fw-medium">Date Issued: {{ payroll.payslip.issue_date|date:"M d, Y" }}</div>
+        </div>
+    </div>
 
-        <div class="row g-3 mb-4 small">
-            <div class="col-6">
-                <span class="text-uppercase text-secondary fw-bold d-block" style="font-size: 0.68rem;">Employee Roster Identity</span>
-                <strong class="text-dark fs-6">{{ payroll.employee.user.get_full_name }}</strong>
-                <span class="d-block text-muted">Position: {{ payroll.employee.position }}</span>
-                <span class="d-block text-muted">Department: {{ payroll.employee.department }}</span>
-            </div>
-            <div class="col-6 text-end">
-                <span class="text-uppercase text-secondary fw-bold d-block" style="font-size: 0.68rem;">Filing Target Period</span>
-                <strong class="text-dark">{{ payroll.payroll_period_start }}</strong>
-                <span class="text-muted d-block">through</span>
-                <strong class="text-dark">{{ payroll.payroll_period_end }}</strong>
-            </div>
-        </div>
+    <!-- Financial Values Table -->
+    <div class="table-responsive mb-5">
+        <table class="table table-bordered mb-0 border-light-subtle">
+            <thead class="table-light text-uppercase fw-bold text-muted" style="font-size: 0.75rem;">
+                <tr>
+                    <th class="py-2 px-3">Description</th>
+                    <th class="py-2 px-3 text-end" style="width: 250px;">Amount Metric</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="py-3 px-3 text-dark fw-medium">Base Gross Earnings <br><small class="text-muted font-monospace d-block mt-1">PRO-RATA SHIFTS LOG EXECUTION</small></td>
+                    <td class="py-3 px-3 text-end text-dark fw-medium align-middle">₱{{ payroll.gross_salary|floatformat:2 }}</td>
+                </tr>
+                <tr>
+                    <td class="py-3 px-3 text-dark fw-medium">Statutory Deductions <br><small class="text-danger font-monospace d-block mt-1">MANDATORY WITHHOLDINGS (12%)</small></td>
+                    <td class="py-3 px-3 text-end text-danger fw-medium align-middle">-₱{{ payroll.deductions|floatformat:2 }}</td>
+                </tr>
+            </tbody>
+            <tfoot class="table-light">
+                <tr>
+                    <th class="py-3 px-3 text-end text-uppercase tracking-wider">Net Disbursed Take-Home:</th>
+                    <th class="py-3 px-3 text-end text-success fs-5 fw-extrabold">₱{{ payroll.net_salary|floatformat:2 }}</th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
 
-        <div class="table-responsive mb-4">
-            <table class="table table-bordered align-middle text-center small m-0">
-                <thead>
-                    <tr class="table-light text-uppercase" style="font-size: 0.72rem;">
-                        <th>Payment Description</th>
-                        <th class="text-end" style="width: 35%;">Remitted Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="text-start fw-semibold">Gross Earned Base Compensation</td>
-                        <!-- 🌟 HARDCODED PESO SYMBOLS IN BREAKDOWN -->
-                        <td class="text-end fw-bold">₱{{ payroll.gross_salary|floatformat:2 }}</td>
-                    </tr>
-                    <tr>
-                        <td class="text-start text-danger">Statutory Deductions & Withholding Taxes (12%)</td>
-                        <td class="text-end text-danger fw-bold">-₱{{ payroll.deductions|floatformat:2 }}</td>
-                    </tr>
-                    <tr class="table-success align-middle" style="font-size: 1.05rem;">
-                        <td class="text-start fw-bold text-success">Disbursed Take-Home Pay</td>
-                        <td class="text-end fw-extrabold text-success">₱{{ payroll.net_salary|floatformat:2 }}</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="bg-light p-3 rounded border small text-muted">
-            <span class="text-uppercase text-secondary fw-bold d-block mb-1" style="font-size: 0.65rem;"><i class="bi bi-info-circle me-1"></i> System Calculation Logs</span>
-            <span class="italic">{{ clean_remarks }}</span>
-        </div>
+    <!-- Generated Remarks Trail -->
+    <div class="mt-2 pt-3 border-top border-light-subtle">
+        <h6 class="fw-bold text-muted text-uppercase mb-2 tracking-wider" style="font-size: 0.70rem;">System Execution Remarks</h6>
+        <p class="small text-secondary mb-0 border-start border-3 border-success ps-3 fw-medium" style="font-family: monospace;">{{ clean_remarks }}</p>
     </div>
 
 </div>
-</body>
-</html>
+{% endblock %}

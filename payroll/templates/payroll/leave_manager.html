@@ -1,129 +1,103 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>PayMe Terminal - Leave Management</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-<div class="container py-5" style="max-width: 1200px;">
+{% extends 'payroll/base.html' %}
 
-    {% if messages %}
-    <div class="mb-4">
-        {% for message in messages %}
-        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% else %}success{% endif %} alert-dismissible fade show shadow-sm small" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+{% block title %}PayMe Central - Leave Management{% endblock %}
+
+{% block content %}
+<div class="mb-5 pb-3 border-bottom">
+    <h2 class="fw-bold text-dark tracking-tight m-0">Absence & Leave Operations</h2>
+    <small class="text-muted fw-medium">Manage corporate time-off requests and absence tracking protocols.</small>
+</div>
+
+<div class="row g-4">
+    <!-- 🟢 EMPLOYEE FILING FORM (Only visible to base employees) -->
+    {% if request.user.profile.role == 'employee' %}
+    <div class="col-md-4">
+        <div class="card form-card p-4 position-sticky" style="top: 20px;">
+            <h5 class="fw-bold text-dark mb-4 tracking-tight"><i class="bi bi-calendar-plus me-2 text-success"></i>File New Request</h5>
+            <form method="POST" action="{% url 'leave_manager' %}">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-secondary">Leave Category</label>
+                    <select name="leave_type" class="form-select form-select-sm" required>
+                        <option value="Sick Leave">Sick Leave</option>
+                        <option value="Vacation Leave">Vacation Leave</option>
+                        <option value="Emergency Leave">Emergency Leave</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-secondary">Start Date</label>
+                    <input type="date" name="start_date" class="form-control form-control-sm" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-secondary">End Date</label>
+                    <input type="date" name="end_date" class="form-control form-control-sm" required>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label small fw-bold text-secondary">Reason / Remarks</label>
+                    <textarea name="reason" class="form-control form-control-sm" rows="3" placeholder="State reason for absence..." required></textarea>
+                </div>
+                <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold shadow-sm py-2 text-uppercase tracking-wider">Submit Filing</button>
+            </form>
         </div>
-        {% endfor %}
     </div>
     {% endif %}
 
-    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
-        <div>
-            <a href="{% if request.user.profile.role in 'superadmin,admin' %}{% url 'admin_dashboard' %}{% else %}{% url 'staff_dashboard' %}{% endif %}" class="text-decoration-none small">
-                <i class="bi bi-arrow-left"></i> Back to Console Dashboard
-            </a>
-            <h2 class="fw-bold text-dark m-0 mt-1">Leave Management System Portal</h2>
-        </div>
-    </div>
-
-    <div class="row g-4">
-        {% if request.user.profile.role == 'employee' %}
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm p-4 bg-white rounded-3 position-sticky" style="top: 20px;">
-                <h5 class="fw-bold text-dark mb-3"><i class="bi bi-calendar-plus me-2 text-primary"></i>File Absence Request</h5>
-                <form method="POST" action="{% url 'leave_manager' %}">
-                    {% csrf_token %}
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-secondary">Leave Classification</label>
-                        <select name="leave_type" class="form-select form-select-sm" required>
-                            <option value="Sick Leave">Sick Leave</option>
-                            <option value="Vacation Leave">Vacation Leave</option>
-                            <option value="Emergency Leave">Emergency Leave</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-secondary">Start Timeline</label>
-                        <input type="date" name="start_date" class="form-control form-control-sm" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-secondary">End Timeline</label>
-                        <input type="date" name="end_date" class="form-control form-control-sm" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-secondary">Justification / Reason</label>
-                        <textarea name="reason" class="form-control form-control-sm" rows="3" placeholder="Provide justification notes..." required></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold shadow-sm">Upload Request Entry</button>
-                </form>
-            </div>
-        </div>
-        {% endif %}
-
-        <div class="{% if request.user.profile.role in 'superadmin,admin' %}col-12{% else %}col-md-8{% endif %}">
-            <div class="card border-0 shadow-sm p-4 bg-white rounded-3">
-                <h5 class="fw-bold text-dark mb-3">
-                    <i class="bi bi-journal-text me-2 text-primary"></i>
-                    {% if request.user.profile.role in 'superadmin,admin' %}Master Administrative Review Queue{% else %}Your Submitted Absences Register{% endif %}
-                </h5>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle m-0">
-                        <thead class="table-light small text-uppercase" style="font-size: 0.72rem;">
-                            <tr>
-                                {% if request.user.profile.role in 'superadmin,admin' %}
-                                <th>Employee Staff</th>
-                                <th>Department</th>
+    <!-- 🟢 MASTER LEAVE REGISTRY TABLE -->
+    <div class="{% if request.user.profile.role == 'employee' %}col-md-8{% else %}col-12{% endif %}">
+        <div class="card table-container p-4 bg-white">
+            <h5 class="fw-bold text-dark mb-4 tracking-tight"><i class="bi bi-folder2-open me-2 text-muted"></i>Absence Request Registry</h5>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle m-0 small">
+                    <thead class="table-light fw-bold text-muted text-uppercase" style="font-size: 0.72rem;">
+                        <tr>
+                            <th class="py-3 px-3">Filing Date</th>
+                            <th class="py-3">Personnel</th>
+                            <th class="py-3">Leave Category</th>
+                            <th class="py-3">Date Window</th>
+                            <th class="py-3">Duration</th>
+                            <th class="py-3">Status</th>
+                            {% if request.user.profile.role != 'employee' %}
+                            <th class="py-3 text-end px-3">Actions</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for leave in leaves %}
+                        <tr>
+                            <td class="px-3 text-muted">{{ leave.date_requested|date:"M d, Y" }}</td>
+                            <td class="fw-bold text-dark">{{ leave.employee.user.get_full_name }}</td>
+                            <td><span class="badge bg-light text-secondary border">{{ leave.leave_type }}</span></td>
+                            <td>{{ leave.start_date|date:"M d" }} &mdash; {{ leave.end_date|date:"M d, Y" }}</td>
+                            <td class="fw-medium">{{ leave.total_days }} Day(s)</td>
+                            <td>
+                                {% if leave.status == 'Approved' %}
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1">Approved</span>
+                                {% elif leave.status == 'Rejected' %}
+                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2 py-1">Rejected</span>
+                                {% else %}
+                                <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2 py-1">Pending</span>
                                 {% endif %}
-                                <th>Classification</th>
-                                <th>Duration Span</th>
-                                <th>Days</th>
-                                <th>Justification Note</th>
-                                <th>Status State</th>
-                                {% if request.user.profile.role in 'superadmin,admin' %}<th class="text-end">Oversight Action</th>{% endif %}
-                            </tr>
-                        </thead>
-                        <tbody class="small" style="font-size: 0.82rem;">
-                            {% for leave in leaves %}
-                            <tr>
-                                {% if request.user.profile.role in 'superadmin,admin' %}
-                                <td class="fw-semibold text-dark">{{ leave.employee.user.get_full_name|default:leave.employee.user.username }}</td>
-                                <td><span class="badge bg-secondary-subtle text-secondary">{{ leave.employee.department }}</span></td>
+                            </td>
+                            
+                            <!-- 🟢 ACTION BUTTONS (Only visible to Management/Superadmins) -->
+                            {% if request.user.profile.role != 'employee' %}
+                            <td class="text-end px-3">
+                                {% if leave.status == 'Pending' %}
+                                <a href="{% url 'approve_leave' leave.id %}" class="btn btn-sm btn-success py-1 px-2 shadow-sm"><i class="bi bi-check-lg"></i></a>
+                                <a href="{% url 'reject_leave' leave.id %}" class="btn btn-sm btn-danger py-1 px-2 shadow-sm"><i class="bi bi-x-lg"></i></a>
+                                {% else %}
+                                <span class="text-muted small fw-medium"><i class="bi bi-lock-fill"></i> Settled</span>
                                 {% endif %}
-                                <td class="fw-bold text-secondary">{{ leave.leave_type }}</td>
-                                <td>{{ leave.start_date }} to {{ leave.end_date }}</td>
-                                <td class="fw-bold text-dark">{{ leave.total_days }} Days</td>
-                                <td class="text-muted italic">{{ leave.reason }}</td>
-                                <td>
-                                    <span class="badge {% if leave.status == 'Approved' %}bg-success-subtle text-success{% elif leave.status == 'Rejected' %}bg-danger-subtle text-danger{% else %}bg-warning-subtle text-warning{% endif %} px-2 py-1 text-uppercase">
-                                        {{ leave.get_status_display }}
-                                    </span>
-                                </td>
-                                {% if request.user.profile.role in 'superadmin,admin' %}
-                                <td class="text-end">
-                                    {% if leave.status == 'Pending' %}
-                                    <div class="d-inline-flex gap-1">
-                                        <a href="{% url 'approve_leave' leave.id %}" class="btn btn-success btn-sm fw-bold px-2 py-1"><i class="bi bi-check"></i> Approve</a>
-                                        <a href="{% url 'reject_leave' leave.id %}" class="btn btn-danger btn-sm fw-bold px-2 py-1"><i class="bi bi-x"></i> Reject</a>
-                                    </div>
-                                    {% else %}
-                                    <span class="text-muted small italic">Processed</span>
-                                    {% endif %}
-                                </td>
-                                {% endif %}
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="{% if request.user.profile.role in 'superadmin,admin' %}8{% else %}5{% endif %}" class="text-center text-muted py-4">No active absence tracking items discovered inside dataset.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="7" class="text-center text-muted py-5 border-0">No active leave filings found in the system registry.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
-</body>
-</html>
+{% endblock %}
