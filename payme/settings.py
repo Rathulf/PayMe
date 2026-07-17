@@ -4,12 +4,11 @@ import dj_database_url
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
 
-load_dotenv()
-
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-9bjg46ib31_lm%61^ee%*jurhqb+!612r8jvm9tnvtv0*%o#=n')
-DEBUG = True
-ALLOWED_HOSTS = []
+SECRET_KEY = os.environ.get('SECRET_KEY')
+DEBUG = os.environ.get('DEBUG',"False") == "True"
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', "localhost, 127.0.0.1").split(',') if h.strip()]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -23,6 +22,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -69,4 +69,14 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'payme/static')]
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [os.path.join(BASE_DIR, 'payroll', 'static').replace('\\', '/')]
+
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    "staticfiles": {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    }
+}

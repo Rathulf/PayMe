@@ -1,0 +1,87 @@
+/* 1. Page Background and Layout */
+.auth-body {
+    margin: 0;
+    padding: 0;
+    background-color: #f4f7f6; /* Light gray background */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    justify-content: center; /* Horizontally center */
+    align-items: center; /* Vertically center */
+    min-height: 100vh; /* Full viewport height */
+}
+
+/* 2. The Registration Card */
+.auth-card {
+    background-color: #ffffff;
+    padding: 40px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); /* Soft shadow */
+    width: 100%;
+    max-width: 450px; /* Maximum width of the card */
+    box-sizing: border-box;
+}
+
+/* 3. Typography */
+.text-center { text-align: center; }
+.mb-3 { margin-bottom: 20px; }
+.fw-bold { font-weight: bold; }
+.text-dark { color: #333; }
+.text-muted { color: #777; }
+.small { font-size: 0.875rem; }
+
+/* 4. Form Fields (Labels and Inputs) */
+.auth-card form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #555;
+    font-size: 0.9rem;
+}
+
+.auth-input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box; /* Important for padding */
+    transition: border-color 0.3s;
+}
+
+.auth-input:focus {
+    outline: none;
+    border-color: #007bff; /* Blue highlight on focus */
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.2);
+}
+
+/* 5. The Register Button */
+.auth-btn-main {
+    width: 100%;
+    padding: 12px;
+    background-color: #007bff; /* Primary blue */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.auth-btn-main:hover {
+    background-color: #0056b3; /* Darker blue on hover */
+}
+
+/* 6. Helper Links */
+.auth-link {
+    display: block;
+    text-align: center;
+    margin-top: 15px;
+    color: #007bff;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.auth-link:hover {
+    text-decoration: underline;
+}
