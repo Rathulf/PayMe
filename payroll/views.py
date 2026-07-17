@@ -421,19 +421,86 @@ def staff_dashboard(request):
     except Employee.DoesNotExist:
         return redirect('logout')
 
-    if request.method == 'POST' and 'clock_in' in request.POST:
-        work_date = request.POST.get('work_date')
-        if not Attendance.objects.filter(employee=employee, work_date=work_date).exists():
-            Attendance.objects.create(employee=employee, work_date=work_date, hours_worked=8.0,
-                                      attendance_status='Present')
-            messages.success(request, "Shift logged successfully.")
+    # Find if there is an existing log for today
+    today = timezone.localdate()
+    attendance_today = Attendance.objects.filter(employee=employee, work_date=today).first()
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        # --- CLOCK IN / RESUME SHIFT ---
+        if action == 'clock_in':
+            if not attendance_today:
+                # First clock-in of the day - Starting at ZERO hours
+                Attendance.objects.create(
+                    employee=employee,
+                    work_date=today,
+                    clock_in_time=timezone.now(),
+                    hours_worked=0.0,
+                    overtime_hours=0.0,
+                    is_clocked_out=False,
+                    attendance_status='Present'
+                )
+                messages.success(request, "Shift started. Clock-in time recorded.")
+            elif attendance_today.is_clocked_out:
+                # Resuming shift after a break
+                attendance_today.clock_in_time = timezone.now()
+                attendance_today.is_clocked_out = False
+                attendance_today.save()
+                messages.success(request, "Welcome back! Shift resumed.")
+            else:
+                messages.error(request, "You are already actively clocked in.")
+
+        # --- CLOCK OUT / PAUSE SHIFT ---
+        elif action == 'clock_out':
+            if attendance_today and not attendance_today.is_clocked_out:
+                now = timezone.now()
+
+                # 1. Calculate time spent in THIS specific session
+                if attendance_today.clock_in_time is None:
+                    session_hours = float(attendance_today.hours_worked) or 8.0
+                else:
+                    time_diff = now - attendance_today.clock_in_time
+                    session_hours = float(time_diff.total_seconds() / 3600)
+
+                # 2. Add session time to the daily running total
+                current_total = float(attendance_today.hours_worked) + float(attendance_today.overtime_hours)
+
+                if attendance_today.clock_in_time is None:
+                    new_total = session_hours  # Handle legacy manual records
+                else:
+                    new_total = current_total + session_hours
+
+                # 3. Split Standard vs Overtime correctly
+                if new_total > 8.0:
+                    attendance_today.hours_worked = 8.0
+                    attendance_today.overtime_hours = new_total - 8.0
+                else:
+                    attendance_today.hours_worked = new_total
+                    attendance_today.overtime_hours = 0.0
+
+                # 4. Save state
+                attendance_today.clock_out_time = now
+                attendance_today.is_clocked_out = True
+                attendance_today.save()
+                messages.success(request,
+                                 f"Clocked out. Session: {session_hours:.2f} hrs. Total logged today: {new_total:.2f} hrs.")
+            else:
+                messages.error(request, "Unable to clock out. No active shift found.")
+
         return redirect('staff_dashboard')
 
     my_payrolls = Payroll.objects.filter(employee=employee).order_by('-payroll_id')
     my_attendance = Attendance.objects.filter(employee=employee).order_by('-work_date')[:10]
-    return render(request, 'payroll/staff_dashboard.html', {'my_payrolls': my_payrolls, 'my_attendance': my_attendance})
+
+    context = {
+        'attendance_today': attendance_today,
+        'my_payrolls': my_payrolls,
+        'my_attendance': my_attendance
+    }
+    return render(request, 'payroll/staff_dashboard.html', context)
 
 
 def logout_view(request):
-    logout(request);
+    logout(request)
     return redirect('login')

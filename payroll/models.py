@@ -42,12 +42,22 @@ class AdminProfile(models.Model):
     def __str__(self):
         return f"Manager: {self.user.get_full_name()} [{self.managed_department}]"
 
+
 class Attendance(models.Model):
     STATUS_CHOICES = (('Present', 'Present'), ('Absent', 'Absent'), ('Late', 'Late'))
     attendance_id = models.AutoField(primary_key=True)
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
     work_date = models.DateField()
-    hours_worked = models.DecimalField(max_digits=4, decimal_places=2, default=8.00)
+
+    # 🌟 NEW FIELDS FOR LIVE TRACKING
+    clock_in_time = models.DateTimeField(null=True, blank=True)
+    clock_out_time = models.DateTimeField(null=True, blank=True)
+    is_clocked_out = models.BooleanField(default=False)
+
+    # Overtime Calculation
+    hours_worked = models.DecimalField(max_digits=4, decimal_places=2, default=0.00)
+    overtime_hours = models.DecimalField(max_digits=4, decimal_places=2, default=0.00)
+
     attendance_status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='Present')
 
     class Meta:
