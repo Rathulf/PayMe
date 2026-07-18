@@ -92,7 +92,8 @@ class Payroll(models.Model):
 
     # Flexible business cycles
     CYCLE_CHOICES = (
-        ('semi_monthly', 'Semi-Monthly (1st-15th & 16th-End)'),
+        ('semi_1st_half', 'Semi-Monthly (1st to 15th)'),
+        ('semi_2nd_half', 'Semi-Monthly (16th to End of Month)'),
         ('bi_weekly', 'Bi-Weekly (Every Two Weeks)'),
         ('weekly', 'Weekly'),
         ('monthly', 'Monthly'),
