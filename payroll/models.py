@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+
 class Profile(models.Model):
     ROLE_CHOICES = (
         ('superadmin', 'System Superadmin'),
@@ -23,6 +24,7 @@ class Profile(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.get_role_display()}"
 
+
 class Employee(models.Model):
     employee_id = models.AutoField(primary_key=True)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='employee_profile')
@@ -33,6 +35,7 @@ class Employee(models.Model):
 
     def __str__(self):
         return f"{self.user.get_full_name()} ({self.position})"
+
 
 class AdminProfile(models.Model):
     admin_id = models.AutoField(primary_key=True)
@@ -49,7 +52,7 @@ class Attendance(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
     work_date = models.DateField()
 
-    # 🌟 NEW FIELDS FOR LIVE TRACKING
+    # LIVE TRACKING
     clock_in_time = models.DateTimeField(null=True, blank=True)
     clock_out_time = models.DateTimeField(null=True, blank=True)
     is_clocked_out = models.BooleanField(default=False)
@@ -66,8 +69,10 @@ class Attendance(models.Model):
     def __str__(self):
         return f"{self.employee.user.last_name} - {self.work_date}"
 
+
 class Leave(models.Model):
-    LEAVE_CHOICES = (('Sick Leave', 'Sick Leave'), ('Vacation Leave', 'Vacation Leave'), ('Emergency Leave', 'Emergency Leave'))
+    LEAVE_CHOICES = (('Sick Leave', 'Sick Leave'), ('Vacation Leave', 'Vacation Leave'),
+                     ('Emergency Leave', 'Emergency Leave'))
     STATUS_CHOICES = (('Pending', 'Pending Review'), ('Approved', 'Approved'), ('Rejected', 'Rejected'))
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
     leave_type = models.CharField(max_length=30, choices=LEAVE_CHOICES)
@@ -81,10 +86,24 @@ class Leave(models.Model):
     def __str__(self):
         return f"{self.employee.user.last_name} - {self.leave_type} ({self.status})"
 
+
 class Payroll(models.Model):
     STATUS_CHOICES = (('Pending', 'Pending Execution'), ('Completed', 'Settled/Completed'))
+
+    # Flexible business cycles
+    CYCLE_CHOICES = (
+        ('semi_monthly', 'Semi-Monthly (1st-15th & 16th-End)'),
+        ('bi_weekly', 'Bi-Weekly (Every Two Weeks)'),
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+    )
+
     payroll_id = models.AutoField(primary_key=True)
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
+
+    # Cycle field
+    processing_cycle = models.CharField(max_length=20, choices=CYCLE_CHOICES, default='semi_monthly')
+
     payroll_period_start = models.DateField()
     payroll_period_end = models.DateField()
     gross_salary = models.DecimalField(max_digits=10, decimal_places=2)
@@ -93,7 +112,8 @@ class Payroll(models.Model):
     payroll_status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='Pending')
 
     def __str__(self):
-        return f"Payroll #{self.payroll_id} - {self.employee.user.last_name}"
+        return f"Payroll #{self.payroll_id} - {self.employee.user.last_name} ({self.get_processing_cycle_display()})"
+
 
 class Payslip(models.Model):
     payslip_id = models.AutoField(primary_key=True)
@@ -104,10 +124,12 @@ class Payslip(models.Model):
     def __str__(self):
         return f"Payslip Voucher #{self.payslip_id}"
 
+
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
         Profile.objects.create(user=instance)
+
 
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
