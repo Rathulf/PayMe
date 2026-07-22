@@ -322,10 +322,18 @@ def payroll_computation(request):
 
             attendance_logs = Attendance.objects.filter(employee=employee, work_date__range=[start_date, end_date],
                                                         attendance_status='Present')
-            total_hours = attendance_logs.aggregate(total=Sum('hours_worked'))['total'] or 0
 
+            # 🌟 FIXED CALCULATION LOGIC: Grab both regular hours and overtime
+            reg_hours = attendance_logs.aggregate(total=Sum('hours_worked'))['total'] or 0
+            ot_hours = attendance_logs.aggregate(total=Sum('overtime_hours'))['total'] or 0
+
+            # Combine them to get the EXACT amount of time clocked in
+            total_hours = float(reg_hours) + float(ot_hours)
+
+            # Calculate gross based strictly on total clocked time
             hourly_rate = float(employee.salary) / 160.0
-            gross_salary = float(total_hours) * hourly_rate
+            gross_salary = total_hours * hourly_rate
+
             deductions = gross_salary * 0.12
             net_salary = gross_salary - deductions
 
@@ -334,7 +342,7 @@ def payroll_computation(request):
                 gross_salary=gross_salary, deductions=deductions, net_salary=net_salary, payroll_status='Completed'
             )
             Payslip.objects.create(payroll=payroll, issue_date=timezone.now().date(),
-                                   remarks=f"Semi-Monthly Calculation [{cycle_label}]. Total Hours: {total_hours}. Rate: ₱{hourly_rate:.2f}/hr.")
+                                   remarks=f"Semi-Monthly Calculation [{cycle_label}]. Total Hours: {total_hours:.2f}. Rate: ₱{hourly_rate:.2f}/hr.")
             messages.success(request, f"Successfully compiled {cycle_label} for {employee.user.get_full_name()}!")
         except Exception as e:
             messages.error(request, f"Anomaly caught: {str(e)}")
@@ -350,7 +358,6 @@ def payroll_computation(request):
             '-payroll_id')
 
     return render(request, 'payroll/payroll_computation.html', {'employees': employees, 'payrolls': payrolls})
-
 
 @login_required
 def admin_payslips(request):
