@@ -322,6 +322,36 @@ def payroll_computation(request):
                 end_date = date(year, month, last_day)
                 cycle_label = "16th to End-of-Month Cutoff"
 
+@login_required
+def payroll_computation(request):
+    if not is_management(request.user): return redirect('admin_dashboard')
+    user_role = request.user.profile.role
+
+    if request.method == 'POST':
+        emp_id = request.POST.get('employee_id')
+        target_month_str = request.POST.get('target_month')
+        payroll_cycle = request.POST.get('payroll_cycle')
+
+        try:
+            employee = Employee.objects.get(pk=emp_id)
+            if user_role != 'superadmin' and employee.department != request.user.admin_profile.managed_department:
+                messages.error(request, "Execution boundary protection block triggered.")
+                return redirect('payroll_computation')
+
+            # 🌟 NEW: Flexible Cycle Date Logic
+            year, month = map(int, target_month_str.split('-'))
+            last_day = calendar.monthrange(year, month)[1]
+
+            if payroll_cycle == 'semi_1st_half':
+                start_date = date(year, month, 1)
+                end_date = date(year, month, 15)
+                cycle_label = "1st to 15th Cutoff"
+
+            elif payroll_cycle == 'semi_2nd_half':
+                start_date = date(year, month, 16)
+                end_date = date(year, month, last_day)
+                cycle_label = "16th to End-of-Month Cutoff"
+
             elif payroll_cycle == 'monthly':
                 start_date = date(year, month, 1)
                 end_date = date(year, month, last_day)
@@ -339,11 +369,18 @@ def payroll_computation(request):
                 work_date__range=[start_date, end_date],
                 attendance_status='Present'
             )
-            total_hours = attendance_logs.aggregate(total=Sum('hours_worked'))['total'] or 0
 
-            # Calculate gross based on logged hours
+            # 🌟 FIXED CALCULATION LOGIC: Grab both regular hours and overtime
+            reg_hours = attendance_logs.aggregate(total=Sum('hours_worked'))['total'] or 0
+            ot_hours = attendance_logs.aggregate(total=Sum('overtime_hours'))['total'] or 0
+
+            # Combine them to get the EXACT amount of time clocked in
+            total_hours = float(reg_hours) + float(ot_hours)
+
+            # Calculate gross based strictly on total clocked time
             hourly_rate = float(employee.salary) / 160.0
-            gross_salary = float(total_hours) * hourly_rate
+            gross_salary = total_hours * hourly_rate
+
             deductions = gross_salary * 0.12
             net_salary = gross_salary - deductions
 
@@ -358,11 +395,13 @@ def payroll_computation(request):
                 net_salary=net_salary,
                 payroll_status='Completed'
             )
+            
             Payslip.objects.create(
                 payroll=payroll,
                 issue_date=timezone.now().date(),
-                remarks=f"Flexible Calculation [{cycle_label}]. Total Hours: {total_hours}. Rate: ₱{hourly_rate:.2f}/hr."
+                remarks=f"Flexible Calculation [{cycle_label}]. Total Hours: {total_hours:.2f}. Rate: ₱{hourly_rate:.2f}/hr."
             )
+            
             messages.success(request, f"Successfully compiled {cycle_label} for {employee.user.get_full_name()}!")
 
         except Exception as e:
@@ -381,8 +420,6 @@ def payroll_computation(request):
             '-payroll_id')
 
     return render(request, 'payroll/payroll_computation.html', {'employees': employees, 'payrolls': payrolls})
-
-
 @login_required
 def admin_payslips(request):
     if not is_management(request.user): return redirect('admin_dashboard')
