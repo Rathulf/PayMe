@@ -4,8 +4,8 @@
 
 {% block content %}
 <div class="mb-5 pb-3 border-bottom">
-    <h2 class="fw-bold text-dark tracking-tight m-0">Semi-Monthly Processing Hub</h2>
-    <small class="text-muted fw-medium">Execute calculations matching dynamic 15th / End-of-Month Philippine cutoff targets.</small>
+    <h2 class="fw-bold text-dark tracking-tight m-0">Payroll Processing Hub</h2>
+    <small class="text-muted fw-medium">Execute calculations matching your dynamic organizational cutoff targets.</small>
 </div>
 
 <div class="card engine-card p-4 bg-white mb-4">
@@ -16,6 +16,7 @@
             <div class="col-md-3">
                 <label class="form-label small fw-bold text-secondary">Target Employee Profile</label>
                 <select name="employee_id" class="form-select form-select-sm" required>
+                    <option value="" disabled selected>Select employee...</option>
                     {% for emp in employees %}
                     <option value="{{ emp.employee_id }}">{{ emp.user.get_full_name }} (₱{{ emp.salary|floatformat:2 }}/mo)</option>
                     {% endfor %}
@@ -25,13 +26,19 @@
                 <label class="form-label small fw-bold text-secondary">Target Processing Month</label>
                 <input type="month" name="target_month" class="form-control form-control-sm" required>
             </div>
+
             <div class="col-md-3">
                 <label class="form-label small fw-bold text-secondary">Processing Cycle</label>
                 <select name="payroll_cycle" class="form-select form-select-sm" required>
-                    <option value="first_half">1st to 15th Cutoff (15th Paycheque)</option>
-                    <option value="second_half">16th to Month End (End-of-Month Paycheque)</option>
+                    <option value="" disabled selected>Select a cycle...</option>
+                    <option value="semi_1st_half">Semi-Monthly (1st to 15th)</option>
+                    <option value="semi_2nd_half">Semi-Monthly (16th to End of Month)</option>
+                    <option value="bi_weekly">Bi-Weekly (Every Two Weeks)</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
                 </select>
             </div>
+
             <div class="col-md-3">
                 <button type="submit" class="btn text-white btn-sm w-100 fw-bold btn-emerald-prime shadow-sm py-2 text-uppercase tracking-wider">
                     <i class="bi bi-cpu-fill me-1"></i> Compute Pay
