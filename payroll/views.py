@@ -8,7 +8,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models import Sum
 from django.utils import timezone
-from datetime import datetime
+from datetime import datetime, date
 import calendar
 from .models import Profile, Employee, Payroll, Leave, Attendance, Payslip, AdminProfile
 
@@ -291,7 +291,7 @@ def reject_leave(request, leave_id):
     return redirect('leave_manager')
 
 
-# --- ₱ AUTOMATED SEMI-MONTHLY CALCULATION RUNS ---
+# --- ₱ FLEXIBLE AUTOMATED CALCULATION RUNS ---
 @login_required
 def payroll_computation(request):
     if not is_management(request.user): return redirect('admin_dashboard')
@@ -308,20 +308,67 @@ def payroll_computation(request):
                 messages.error(request, "Execution boundary protection block triggered.")
                 return redirect('payroll_computation')
 
+            # 🌟 NEW: Flexible Cycle Date Logic
             year, month = map(int, target_month_str.split('-'))
+            last_day = calendar.monthrange(year, month)[1]
 
-            if payroll_cycle == 'first_half':
-                start_date = datetime(year, month, 1).date()
-                end_date = datetime(year, month, 15).date()
-                cycle_label = "15th Day Cycle"
+            if payroll_cycle == 'semi_1st_half':
+                start_date = date(year, month, 1)
+                end_date = date(year, month, 15)
+                cycle_label = "1st to 15th Cutoff"
+
+            elif payroll_cycle == 'semi_2nd_half':
+                start_date = date(year, month, 16)
+                end_date = date(year, month, last_day)
+                cycle_label = "16th to End-of-Month Cutoff"
+
+@login_required
+def payroll_computation(request):
+    if not is_management(request.user): return redirect('admin_dashboard')
+    user_role = request.user.profile.role
+
+    if request.method == 'POST':
+        emp_id = request.POST.get('employee_id')
+        target_month_str = request.POST.get('target_month')
+        payroll_cycle = request.POST.get('payroll_cycle')
+
+        try:
+            employee = Employee.objects.get(pk=emp_id)
+            if user_role != 'superadmin' and employee.department != request.user.admin_profile.managed_department:
+                messages.error(request, "Execution boundary protection block triggered.")
+                return redirect('payroll_computation')
+
+            # 🌟 NEW: Flexible Cycle Date Logic
+            year, month = map(int, target_month_str.split('-'))
+            last_day = calendar.monthrange(year, month)[1]
+
+            if payroll_cycle == 'semi_1st_half':
+                start_date = date(year, month, 1)
+                end_date = date(year, month, 15)
+                cycle_label = "1st to 15th Cutoff"
+
+            elif payroll_cycle == 'semi_2nd_half':
+                start_date = date(year, month, 16)
+                end_date = date(year, month, last_day)
+                cycle_label = "16th to End-of-Month Cutoff"
+
+            elif payroll_cycle == 'monthly':
+                start_date = date(year, month, 1)
+                end_date = date(year, month, last_day)
+                cycle_label = "Full Month Cycle"
+
             else:
-                start_date = datetime(year, month, 16).date()
-                last_day = calendar.monthrange(year, month)[1]
-                end_date = datetime(year, month, last_day).date()
-                cycle_label = "End-of-Month Cycle"
+                # Safe fallback
+                start_date = date(year, month, 1)
+                end_date = date(year, month, 15)
+                cycle_label = "Standard Cycle"
 
-            attendance_logs = Attendance.objects.filter(employee=employee, work_date__range=[start_date, end_date],
-                                                        attendance_status='Present')
+            # Pull attendance for the calculated dynamic dates
+            attendance_logs = Attendance.objects.filter(
+                employee=employee,
+                work_date__range=[start_date, end_date],
+                attendance_status='Present'
+            )
 
             # 🌟 FIXED CALCULATION LOGIC: Grab both regular hours and overtime
             reg_hours = attendance_logs.aggregate(total=Sum('hours_worked'))['total'] or 0
@@ -337,17 +384,32 @@ def payroll_computation(request):
             deductions = gross_salary * 0.12
             net_salary = gross_salary - deductions
 
+            # Save to Database with the updated model field (processing_cycle)
             payroll = Payroll.objects.create(
-                employee=employee, payroll_period_start=start_date, payroll_period_end=end_date,
-                gross_salary=gross_salary, deductions=deductions, net_salary=net_salary, payroll_status='Completed'
+                employee=employee,
+                processing_cycle=payroll_cycle,
+                payroll_period_start=start_date,
+                payroll_period_end=end_date,
+                gross_salary=gross_salary,
+                deductions=deductions,
+                net_salary=net_salary,
+                payroll_status='Completed'
             )
-            Payslip.objects.create(payroll=payroll, issue_date=timezone.now().date(),
-                                   remarks=f"Semi-Monthly Calculation [{cycle_label}]. Total Hours: {total_hours:.2f}. Rate: ₱{hourly_rate:.2f}/hr.")
+            
+            Payslip.objects.create(
+                payroll=payroll,
+                issue_date=timezone.now().date(),
+                remarks=f"Flexible Calculation [{cycle_label}]. Total Hours: {total_hours:.2f}. Rate: ₱{hourly_rate:.2f}/hr."
+            )
+            
             messages.success(request, f"Successfully compiled {cycle_label} for {employee.user.get_full_name()}!")
+
         except Exception as e:
             messages.error(request, f"Anomaly caught: {str(e)}")
+
         return redirect('payroll_computation')
 
+    # GET Request Handling (Loading the page)
     if user_role == 'superadmin':
         employees = Employee.objects.all().select_related('user')
         payrolls = Payroll.objects.all().select_related('employee__user').order_by('-payroll_id')
@@ -358,7 +420,6 @@ def payroll_computation(request):
             '-payroll_id')
 
     return render(request, 'payroll/payroll_computation.html', {'employees': employees, 'payrolls': payrolls})
-
 @login_required
 def admin_payslips(request):
     if not is_management(request.user): return redirect('admin_dashboard')
