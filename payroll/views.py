@@ -191,8 +191,7 @@ def manage_employees(request):
     else:
         admin_dept = request.user.admin_profile.managed_department
         all_users = User.objects.filter(employee_profile__department=admin_dept).select_related('profile',
-                                                                                                'employee_profile').order_by(
-            'id')
+                                                                                                'employee_profile').order_by('id')
 
     return render(request, 'payroll/manage_employees.html', {'all_users': all_users})
 
@@ -308,37 +307,7 @@ def payroll_computation(request):
                 messages.error(request, "Execution boundary protection block triggered.")
                 return redirect('payroll_computation')
 
-            # 🌟 NEW: Flexible Cycle Date Logic
-            year, month = map(int, target_month_str.split('-'))
-            last_day = calendar.monthrange(year, month)[1]
-
-            if payroll_cycle == 'semi_1st_half':
-                start_date = date(year, month, 1)
-                end_date = date(year, month, 15)
-                cycle_label = "1st to 15th Cutoff"
-
-            elif payroll_cycle == 'semi_2nd_half':
-                start_date = date(year, month, 16)
-                end_date = date(year, month, last_day)
-                cycle_label = "16th to End-of-Month Cutoff"
-
-@login_required
-def payroll_computation(request):
-    if not is_management(request.user): return redirect('admin_dashboard')
-    user_role = request.user.profile.role
-
-    if request.method == 'POST':
-        emp_id = request.POST.get('employee_id')
-        target_month_str = request.POST.get('target_month')
-        payroll_cycle = request.POST.get('payroll_cycle')
-
-        try:
-            employee = Employee.objects.get(pk=emp_id)
-            if user_role != 'superadmin' and employee.department != request.user.admin_profile.managed_department:
-                messages.error(request, "Execution boundary protection block triggered.")
-                return redirect('payroll_computation')
-
-            # 🌟 NEW: Flexible Cycle Date Logic
+            # 🌟 Flexible Cycle Date Logic
             year, month = map(int, target_month_str.split('-'))
             last_day = calendar.monthrange(year, month)[1]
 
@@ -358,7 +327,6 @@ def payroll_computation(request):
                 cycle_label = "Full Month Cycle"
 
             else:
-                # Safe fallback
                 start_date = date(year, month, 1)
                 end_date = date(year, month, 15)
                 cycle_label = "Standard Cycle"
@@ -384,7 +352,7 @@ def payroll_computation(request):
             deductions = gross_salary * 0.12
             net_salary = gross_salary - deductions
 
-            # Save to Database with the updated model field (processing_cycle)
+            # Save to Database
             payroll = Payroll.objects.create(
                 employee=employee,
                 processing_cycle=payroll_cycle,
@@ -395,13 +363,11 @@ def payroll_computation(request):
                 net_salary=net_salary,
                 payroll_status='Completed'
             )
-            
             Payslip.objects.create(
                 payroll=payroll,
                 issue_date=timezone.now().date(),
                 remarks=f"Flexible Calculation [{cycle_label}]. Total Hours: {total_hours:.2f}. Rate: ₱{hourly_rate:.2f}/hr."
             )
-            
             messages.success(request, f"Successfully compiled {cycle_label} for {employee.user.get_full_name()}!")
 
         except Exception as e:
@@ -409,17 +375,18 @@ def payroll_computation(request):
 
         return redirect('payroll_computation')
 
-    # GET Request Handling (Loading the page)
+    # GET Request Handling
     if user_role == 'superadmin':
         employees = Employee.objects.all().select_related('user')
         payrolls = Payroll.objects.all().select_related('employee__user').order_by('-payroll_id')
     else:
         dept = request.user.admin_profile.managed_department
         employees = Employee.objects.filter(department=dept).select_related('user')
-        payrolls = Payroll.objects.filter(employee__department=dept).select_related('employee__user').order_by(
-            '-payroll_id')
+        payrolls = Payroll.objects.filter(employee__department=dept).select_related('employee__user').order_by('-payroll_id')
 
     return render(request, 'payroll/payroll_computation.html', {'employees': employees, 'payrolls': payrolls})
+
+
 @login_required
 def admin_payslips(request):
     if not is_management(request.user): return redirect('admin_dashboard')
@@ -428,8 +395,7 @@ def admin_payslips(request):
         payrolls = Payroll.objects.all().select_related('employee__user').order_by('-payroll_id')
     else:
         dept = request.user.admin_profile.managed_department
-        payrolls = Payroll.objects.filter(employee__department=dept).select_related('employee__user').order_by(
-            '-payroll_id')
+        payrolls = Payroll.objects.filter(employee__department=dept).select_related('employee__user').order_by('-payroll_id')
     return render(request, 'payroll/admin_payslips.html', {'payrolls': payrolls})
 
 
@@ -489,17 +455,14 @@ def staff_dashboard(request):
     except Employee.DoesNotExist:
         return redirect('logout')
 
-    # Find if there is an existing log for today
     today = timezone.localdate()
     attendance_today = Attendance.objects.filter(employee=employee, work_date=today).first()
 
     if request.method == 'POST':
         action = request.POST.get('action')
 
-        # --- CLOCK IN / RESUME SHIFT ---
         if action == 'clock_in':
             if not attendance_today:
-                # First clock-in of the day - Starting at ZERO hours
                 Attendance.objects.create(
                     employee=employee,
                     work_date=today,
@@ -511,7 +474,6 @@ def staff_dashboard(request):
                 )
                 messages.success(request, "Shift started. Clock-in time recorded.")
             elif attendance_today.is_clocked_out:
-                # Resuming shift after a break
                 attendance_today.clock_in_time = timezone.now()
                 attendance_today.is_clocked_out = False
                 attendance_today.save()
@@ -519,27 +481,23 @@ def staff_dashboard(request):
             else:
                 messages.error(request, "You are already actively clocked in.")
 
-        # --- CLOCK OUT / PAUSE SHIFT ---
         elif action == 'clock_out':
             if attendance_today and not attendance_today.is_clocked_out:
                 now = timezone.now()
 
-                # 1. Calculate time spent in THIS specific session
                 if attendance_today.clock_in_time is None:
                     session_hours = float(attendance_today.hours_worked) or 8.0
                 else:
                     time_diff = now - attendance_today.clock_in_time
                     session_hours = float(time_diff.total_seconds() / 3600)
 
-                # 2. Add session time to the daily running total
                 current_total = float(attendance_today.hours_worked) + float(attendance_today.overtime_hours)
 
                 if attendance_today.clock_in_time is None:
-                    new_total = session_hours  # Handle legacy manual records
+                    new_total = session_hours
                 else:
                     new_total = current_total + session_hours
 
-                # 3. Split Standard vs Overtime correctly
                 if new_total > 8.0:
                     attendance_today.hours_worked = 8.0
                     attendance_today.overtime_hours = new_total - 8.0
@@ -547,7 +505,6 @@ def staff_dashboard(request):
                     attendance_today.hours_worked = new_total
                     attendance_today.overtime_hours = 0.0
 
-                # 4. Save state
                 attendance_today.clock_out_time = now
                 attendance_today.is_clocked_out = True
                 attendance_today.save()
