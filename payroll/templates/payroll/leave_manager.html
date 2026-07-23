@@ -10,14 +10,14 @@
 
 <div class="row g-4">
     <!-- 🟢 EMPLOYEE FILING FORM (Only visible to base employees) -->
-    {% if request.user.profile.role == 'employee' %}
+    {% if user.profile.role == 'employee' %}
     <div class="col-md-4">
 
-        <!-- 🌟 NEW: Display Remaining Balance to Employee -->
+        <!-- 🌟 NEW: Display Remaining Balance to Employee with Fallback -->
         <div class="alert alert-info border-0 shadow-sm mb-4">
             <i class="bi bi-info-circle-fill me-2"></i>
             <strong>Your Leave Balance:</strong> You currently have
-            <span class="badge bg-primary fs-6">{{ request.user.employee_profile.available_leave_days }} days</span>
+            <span class="badge bg-primary fs-6">{{ user.employee_profile.available_leave_days|default_if_none:"15" }} days</span>
             remaining for this year.
         </div>
 
@@ -52,7 +52,7 @@
     {% endif %}
 
     <!-- 🟢 MASTER LEAVE REGISTRY TABLE -->
-    <div class="{% if request.user.profile.role == 'employee' %}col-md-8{% else %}col-12{% endif %}">
+    <div class="{% if user.profile.role == 'employee' %}col-md-8{% else %}col-12{% endif %}">
         <div class="card table-container p-4 bg-white">
             <h5 class="fw-bold text-dark mb-4 tracking-tight"><i class="bi bi-folder2-open me-2 text-muted"></i>Absence Request Registry</h5>
             <div class="table-responsive">
@@ -66,13 +66,13 @@
                             <th class="py-3">Duration</th>
 
                             <!-- 🌟 NEW: Admin-Only Balance Column Header -->
-                            {% if request.user.profile.role != 'employee' %}
+                            {% if user.profile.role != 'employee' %}
                             <th class="py-3">Balance Check</th>
                             {% endif %}
 
                             <th class="py-3">Status</th>
 
-                            {% if request.user.profile.role != 'employee' %}
+                            {% if user.profile.role != 'employee' %}
                             <th class="py-3 text-end px-3">Actions</th>
                             {% endif %}
                         </tr>
@@ -86,12 +86,12 @@
                             <td>{{ leave.start_date|date:"M d" }} &mdash; {{ leave.end_date|date:"M d, Y" }}</td>
                             <td class="fw-medium">{{ leave.total_days }} Day(s)</td>
 
-                            <!-- 🌟 NEW: Admin-Only Balance Check Data -->
-                            {% if request.user.profile.role != 'employee' %}
+                            <!-- 🌟 NEW: Admin-Only Balance Check Data with Fallbacks -->
+                            {% if user.profile.role != 'employee' %}
                             <td>
                                 <div class="small">
                                     <span class="text-muted">Current:</span>
-                                    <strong>{{ leave.employee.available_leave_days }} days</strong>
+                                    <strong>{{ leave.employee.available_leave_days|default_if_none:"15" }} days</strong>
                                 </div>
                                 <div class="small">
                                     <span class="text-muted">Requested:</span>
@@ -102,7 +102,7 @@
                                     <div class="small">
                                         <span class="text-muted">If Approved:</span>
                                         <strong class="text-success">
-                                            <script>document.write({{ leave.employee.available_leave_days }} - {{ leave.total_days }});</script> days
+                                            <script>document.write({{ leave.employee.available_leave_days|default_if_none:"15" }} - {{ leave.total_days }});</script> days
                                         </strong>
                                     </div>
                                 {% else %}
@@ -124,7 +124,7 @@
                             </td>
 
                             <!-- 🟢 ACTION BUTTONS (Only visible to Management/Superadmins) -->
-                            {% if request.user.profile.role != 'employee' %}
+                            {% if user.profile.role != 'employee' %}
                             <td class="text-end px-3">
                                 {% if leave.status == 'Pending' %}
                                 <a href="{% url 'approve_leave' leave.id %}" class="btn btn-sm btn-success py-1 px-2 shadow-sm"><i class="bi bi-check-lg"></i></a>
