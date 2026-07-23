@@ -241,10 +241,22 @@ def leave_manager(request):
             employee = request.user.employee_profile
             start_date = datetime.strptime(request.POST.get('start_date'), '%Y-%m-%d').date()
             end_date = datetime.strptime(request.POST.get('end_date'), '%Y-%m-%d').date()
+
+            # 🌟 NEW: Calculate total requested days and check limits
+            total_requested_days = (end_date - start_date).days + 1
+
+            if total_requested_days > employee.available_leave_days:
+                messages.error(request,
+                               f"Request denied: You only have {employee.available_leave_days} leave days remaining.")
+                return redirect('leave_manager')
+            elif total_requested_days <= 0:
+                messages.error(request, "Invalid date range.")
+                return redirect('leave_manager')
+
             Leave.objects.create(
                 employee=employee, leave_type=request.POST.get('leave_type'),
                 start_date=start_date, end_date=end_date,
-                total_days=(end_date - start_date).days + 1,
+                total_days=total_requested_days,
                 reason=request.POST.get('reason'), status='Pending'
             )
             messages.success(request, "Absence request uploaded.")
@@ -272,9 +284,19 @@ def approve_leave(request, leave_id):
     if request.user.profile.role != 'superadmin' and leave.employee.department != request.user.admin_profile.managed_department:
         messages.error(request, "Unauthorized boundary shift.")
     else:
-        leave.status = 'Approved'
-        leave.save()
-        messages.success(request, "Leave entry approved.")
+        # 🌟 NEW: Ensure we only deduct if it's currently Pending
+        if leave.status == 'Pending':
+            if leave.employee.available_leave_days >= leave.total_days:
+                leave.employee.available_leave_days -= leave.total_days
+                leave.employee.save()
+
+                leave.status = 'Approved'
+                leave.save()
+                messages.success(request, f"Leave entry approved. {leave.total_days} days deducted from balance.")
+            else:
+                messages.error(request, "Approval failed: Employee no longer has enough leave balance.")
+        else:
+            messages.warning(request, "This leave request has already been processed.")
     return redirect('leave_manager')
 
 
@@ -339,11 +361,17 @@ def payroll_computation(request):
                 work_date__range=[start_date, end_date],
                 attendance_status='Present'
             )
-            total_hours = attendance_logs.aggregate(total=Sum('hours_worked'))['total'] or 0
 
-            # Calculate gross based on logged hours
+            # Grab both regular hours and overtime
+            reg_hours = attendance_logs.aggregate(total=Sum('hours_worked'))['total'] or 0
+            ot_hours = attendance_logs.aggregate(total=Sum('overtime_hours'))['total'] or 0
+
+            # Combine them to get the EXACT amount of time clocked in
+            total_hours = float(reg_hours) + float(ot_hours)
+
+            # Calculate gross based strictly on total clocked time
             hourly_rate = float(employee.salary) / 160.0
-            gross_salary = float(total_hours) * hourly_rate
+            gross_salary = total_hours * hourly_rate
             deductions = gross_salary * 0.12
             net_salary = gross_salary - deductions
 

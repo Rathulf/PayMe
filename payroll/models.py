@@ -82,6 +82,7 @@ class Leave(models.Model):
     reason = models.TextField()
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='Pending')
     date_requested = models.DateField(auto_now_add=True)
+    available_leave_days = models.IntegerField(default=15)
 
     def __str__(self):
         return f"{self.employee.user.last_name} - {self.leave_type} ({self.status})"
