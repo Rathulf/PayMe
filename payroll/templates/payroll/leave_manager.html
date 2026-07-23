@@ -12,6 +12,15 @@
     <!-- 🟢 EMPLOYEE FILING FORM (Only visible to base employees) -->
     {% if request.user.profile.role == 'employee' %}
     <div class="col-md-4">
+
+        <!-- 🌟 NEW: Display Remaining Balance to Employee -->
+        <div class="alert alert-info border-0 shadow-sm mb-4">
+            <i class="bi bi-info-circle-fill me-2"></i>
+            <strong>Your Leave Balance:</strong> You currently have
+            <span class="badge bg-primary fs-6">{{ request.user.employee_profile.available_leave_days }} days</span>
+            remaining for this year.
+        </div>
+
         <div class="card form-card p-4 position-sticky" style="top: 20px;">
             <h5 class="fw-bold text-dark mb-4 tracking-tight"><i class="bi bi-calendar-plus me-2 text-success"></i>File New Request</h5>
             <form method="POST" action="{% url 'leave_manager' %}">
@@ -55,7 +64,14 @@
                             <th class="py-3">Leave Category</th>
                             <th class="py-3">Date Window</th>
                             <th class="py-3">Duration</th>
+
+                            <!-- 🌟 NEW: Admin-Only Balance Column Header -->
+                            {% if request.user.profile.role != 'employee' %}
+                            <th class="py-3">Balance Check</th>
+                            {% endif %}
+
                             <th class="py-3">Status</th>
+
                             {% if request.user.profile.role != 'employee' %}
                             <th class="py-3 text-end px-3">Actions</th>
                             {% endif %}
@@ -69,6 +85,34 @@
                             <td><span class="badge bg-light text-secondary border">{{ leave.leave_type }}</span></td>
                             <td>{{ leave.start_date|date:"M d" }} &mdash; {{ leave.end_date|date:"M d, Y" }}</td>
                             <td class="fw-medium">{{ leave.total_days }} Day(s)</td>
+
+                            <!-- 🌟 NEW: Admin-Only Balance Check Data -->
+                            {% if request.user.profile.role != 'employee' %}
+                            <td>
+                                <div class="small">
+                                    <span class="text-muted">Current:</span>
+                                    <strong>{{ leave.employee.available_leave_days }} days</strong>
+                                </div>
+                                <div class="small">
+                                    <span class="text-muted">Requested:</span>
+                                    <strong class="text-warning">-{{ leave.total_days }} days</strong>
+                                </div>
+                                <hr class="my-1" style="border-top: 1px dashed #ccc;">
+                                {% if leave.status == 'Pending' %}
+                                    <div class="small">
+                                        <span class="text-muted">If Approved:</span>
+                                        <strong class="text-success">
+                                            <script>document.write({{ leave.employee.available_leave_days }} - {{ leave.total_days }});</script> days
+                                        </strong>
+                                    </div>
+                                {% else %}
+                                    <div class="small text-muted fst-italic">
+                                        Already {{ leave.status }}
+                                    </div>
+                                {% endif %}
+                            </td>
+                            {% endif %}
+
                             <td>
                                 {% if leave.status == 'Approved' %}
                                 <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1">Approved</span>
@@ -78,7 +122,7 @@
                                 <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2 py-1">Pending</span>
                                 {% endif %}
                             </td>
-                            
+
                             <!-- 🟢 ACTION BUTTONS (Only visible to Management/Superadmins) -->
                             {% if request.user.profile.role != 'employee' %}
                             <td class="text-end px-3">
@@ -92,7 +136,8 @@
                             {% endif %}
                         </tr>
                         {% empty %}
-                        <tr><td colspan="7" class="text-center text-muted py-5 border-0">No active leave filings found in the system registry.</td></tr>
+                        <!-- Increased colspan to 8 to account for the new column -->
+                        <tr><td colspan="8" class="text-center text-muted py-5 border-0">No active leave filings found in the system registry.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
